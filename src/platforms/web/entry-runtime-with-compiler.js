@@ -1,4 +1,5 @@
 /* @flow */
+// 运行时 + 编译器的版本。编译器用于将模板编译成 render 函数。
 
 import config from 'core/config'
 import { warn, cached } from 'core/util/index'
@@ -35,6 +36,7 @@ Vue.prototype.$mount = function (
     let template = options.template
     if (template) {
       if (typeof template === 'string') {
+        // template 为字符串模板或 # 开头的选择器
         if (template.charAt(0) === '#') {
           template = idToTemplate(template)
           /* istanbul ignore if */
@@ -46,6 +48,7 @@ Vue.prototype.$mount = function (
           }
         }
       } else if (template.nodeType) {
+        // template 为 DOM 元素
         template = template.innerHTML
       } else {
         if (process.env.NODE_ENV !== 'production') {
@@ -62,6 +65,7 @@ Vue.prototype.$mount = function (
         mark('compile')
       }
 
+      // 将 template 编译成 render 函数
       const { render, staticRenderFns } = compileToFunctions(template, {
         shouldDecodeNewlines,
         shouldDecodeNewlinesForHref,
