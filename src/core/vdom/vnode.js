@@ -1,4 +1,10 @@
 /* @flow */
+/**
+ * 该文件主要提供`VNode`类，以及几个方法：
+ *   `createEmptyVNode`：创建空的`vnode`
+ *   `createTextVNode`：创建文本`vnode`
+ *   `cloneVNode`：复制`vnode`（可深度复制）
+ */
 
 export default class VNode {
   tag: string | void;
