@@ -243,6 +243,10 @@ export function createPatchFunction (backend) {
 
   /**
    * 创建组件节点
+   * @param {*} vnode 该组件的 vnode，其 vnode.name 为 vue-component-Ctor.cid-name
+   * @param {*} insertedVnodeQueue
+   * @param {*} parentElm 要插入到的 DOM 元素
+   * @param {*} refElm 如果存在，组件将插入到 parentElm 之下，refElm 之前
    */
   function createComponent (vnode, insertedVnodeQueue, parentElm, refElm) {
     let i = vnode.data

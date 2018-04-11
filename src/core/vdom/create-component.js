@@ -197,6 +197,7 @@ export function createComponent (
   const vnode = new VNode(
     `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
     data, undefined, undefined, undefined, context,
+    // vnode.componentOptions
     { Ctor, propsData, listeners, tag, children },
     asyncFactory
   )
@@ -212,6 +213,13 @@ export function createComponent (
   return vnode
 }
 
+/**
+ * 针对 vnode 创建组件实例
+ * @param {*} vnode 组件对应的 vnode（vnode.name 的格式为 vue-component-Ctor.cid-name）
+ * @param {*} parent 创建该组件时，处于活动状态的父组件，如此形成组件链
+ * @param {*} parentElm 要插入到的 DOM 元素
+ * @param {*} refElm 如果存在，组件将插入到 parentElm 之下，refElm 之前
+ */
 export function createComponentInstanceForVnode (
   vnode: any, // we know it's MountedComponentVNode but flow doesn't
   parent: any, // activeInstance in lifecycle state
