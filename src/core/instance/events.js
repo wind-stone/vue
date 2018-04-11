@@ -13,6 +13,7 @@ export function initEvents (vm: Component) {
   vm._events = Object.create(null)
   vm._hasHookEvent = false
   // init parent attached events
+  // 将挂载在组件标签上的 listeners更新到组件上
   const listeners = vm.$options._parentListeners
   if (listeners) {
     updateComponentListeners(vm, listeners)
@@ -43,6 +44,11 @@ export function updateComponentListeners (
   target = undefined
 }
 
+/**
+ * 发布订阅模式
+ *
+ * 每个 Vue 实例自带发布订阅的能力，即实现了事件接口，此能力是通过在`Vue.prototype`上添加`$on`、`$off`、`$emit`、`$once`方法实现的。
+ */
 export function eventsMixin (Vue: Class<Component>) {
   const hookRE = /^hook:/
   Vue.prototype.$on = function (event: string | Array<string>, fn: Function): Component {
@@ -68,6 +74,7 @@ export function eventsMixin (Vue: Class<Component>) {
       vm.$off(event, on)
       fn.apply(vm, arguments)
     }
+    // 挂载原始的 fn，方便通过 $off 删除
     on.fn = fn
     vm.$on(event, on)
     return vm
