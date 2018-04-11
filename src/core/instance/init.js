@@ -40,6 +40,15 @@ export function initMixin (Vue: Class<Component>) {
       initInternalComponent(vm, options)
     } else {
       // 非组件实例：合并 options 选项
+      /**
+       * 初始化 Vue 实例/组件时，需要将`Ctor.options`（考虑到继承，这里不只是`Vue.options`）与传入的`options`选项合并成新的`options`后，再做下一步处理。而在合并`options`前，需要做一些处理，比如获取最新的`Ctor.options`。
+
+       * 之所以要获取最新的`Ctor.options`，是因为如果`Ctor`是继承而来的话，`Ctor.options`实际上是由父类`Super`的`Super.options`与`Ctor`继承`Super`时传入的`extendOptions`合并而来的，且`Super.options`/`Ctor.options`都可能通过`Super/Ctor.mixin`方法注入新的选项。
+
+      * 注意项：
+      *   - 通过`mergeOptions`源码可知，每次有两个`options`合并之后，总会返回一新的`options`引用对象
+      *   - `mergeOptions`里合并各个`key`时，其`value`也是返回新的`value`引用对象（除了`data`的合并）
+      */
       vm.$options = mergeOptions(
         // 返回最新的 vm.constructor.options
         resolveConstructorOptions(vm.constructor),
@@ -55,7 +64,7 @@ export function initMixin (Vue: Class<Component>) {
     }
     // expose real self
     vm._self = vm
-    initLifecycle(vm)
+    initLifecycle(vm) // 上次学习到这里
     initEvents(vm)
     initRender(vm)
     callHook(vm, 'beforeCreate')
