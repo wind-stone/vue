@@ -30,12 +30,18 @@ export function initMixin (Vue: Class<Component>) {
     vm._isVue = true
     // merge options
     if (options && options._isComponent) {
+      // 组件实例
+
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
+
+      // 调用 initInternalComponent 函数后，合并的 options 已经挂载到 vm.$options
       initInternalComponent(vm, options)
     } else {
+      // 非组件实例：合并 options 选项
       vm.$options = mergeOptions(
+        // 返回最新的 vm.constructor.options
         resolveConstructorOptions(vm.constructor),
         options || {},
         vm
@@ -65,22 +71,33 @@ export function initMixin (Vue: Class<Component>) {
       measure(`vue ${vm._name} init`, startTag, endTag)
     }
 
+    // 只有存在 el 属性，才挂载到 el 上
     if (vm.$options.el) {
       vm.$mount(vm.$options.el)
     }
   }
 }
 
+/**
+ * 针对组件实例，合并 vm.constructor.options 和 new Ctor(options) 时传入的 options
+ * 请同时参考 create-component.js 里的 createComponentInstanceForVnode 函数
+ */
 export function initInternalComponent (vm: Component, options: InternalComponentOptions) {
   const opts = vm.$options = Object.create(vm.constructor.options)
   // doing this because it's faster than dynamic enumeration.
+  // 该组件实例对应的父占位节点，_parentVnode 的 name 属性格式为 vue-component-Ctor.cid-name
   const parentVnode = options._parentVnode
+  // options.parent：创建该组件实例时的父组件（并且只能是组件），如此形成组件链
   opts.parent = options.parent
+  // opts._parentVnode：组件实例对应的 vnode 的父 vnode
   opts._parentVnode = parentVnode
+  // opts._parentElm：组件实例最终要挂载到的 DOM 节点
   opts._parentElm = options._parentElm
+  // opts._refElm：挂载到 opts._parentElm 下面时，如果 opts._refElm 存在，则挂载到 opts._refElm 之前
   opts._refElm = options._refElm
 
   const vnodeComponentOptions = parentVnode.componentOptions
+  // 组件实例的 opts 要挂载 parentVnode 上的 propsData、listeners、children
   opts.propsData = vnodeComponentOptions.propsData
   opts._parentListeners = vnodeComponentOptions.listeners
   opts._renderChildren = vnodeComponentOptions.children
@@ -92,11 +109,24 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   }
 }
 
+/**
+ * 返回（最新的）Ctor.options
+ *
+ * 此处要考虑的问题是
+ * 1. 继承的 super.options 可能变化
+ * 2. 继承时传入的 extendOptions 可能发生变化（实际是通过 Ctor.mixin 修改的，算作 extendOptions 的修改）
+ * 因此需要重新合并 superOptions 和 extendOptions
+ */
 export function resolveConstructorOptions (Ctor: Class<Component>) {
   let options = Ctor.options
+  // 如果存在父类，即该 Ctor 是继承而来的子类
   if (Ctor.super) {
+    // 当前计算得出的 super.options
     const superOptions = resolveConstructorOptions(Ctor.super)
+
+    // 子类继承时保存的 super.options
     const cachedSuperOptions = Ctor.superOptions
+
     if (superOptions !== cachedSuperOptions) {
       // super option changed,
       // need to resolve new options.
@@ -107,6 +137,7 @@ export function resolveConstructorOptions (Ctor: Class<Component>) {
       if (modifiedOptions) {
         extend(Ctor.extendOptions, modifiedOptions)
       }
+      // 通过`mergeOptions`源码可知，每次有两个`options`合并之后，总会返回一新的`options`引用对象
       options = Ctor.options = mergeOptions(superOptions, Ctor.extendOptions)
       if (options.name) {
         options.components[options.name] = Ctor
@@ -116,12 +147,24 @@ export function resolveConstructorOptions (Ctor: Class<Component>) {
   return options
 }
 
+
+/**
+ * 返回 Ctor.options 修改后，key 对应的 value（通过 Ctor.mixin 修改的）
+ */
 function resolveModifiedOptions (Ctor: Class<Component>): ?Object {
   let modified
+
+  // Ctor.options：合并 super.options 和 extendOptions 而来
   const latest = Ctor.options
+
+  // Ctor.extendOptions：调用 super.extend(extendOptions) 传入的
   const extended = Ctor.extendOptions
+
+  // Ctor.sealedOptions：调用 super.extend(extendOptions) 时对最终合并后的 Sub.options 的 sealed 版本
   const sealed = Ctor.sealedOptions
+
   for (const key in latest) {
+    // Ctor.mixin 是通过 mergeOptions 合并选项的，返回的 value 都是新的引用对象
     if (latest[key] !== sealed[key]) {
       if (!modified) modified = {}
       modified[key] = dedupe(latest[key], extended[key], sealed[key])
@@ -130,6 +173,9 @@ function resolveModifiedOptions (Ctor: Class<Component>): ?Object {
   return modified
 }
 
+/**
+ * value 是数组时，对数组项去重
+ */
 function dedupe (latest, extended, sealed) {
   // compare latest and sealed to ensure lifecycle hooks won't be duplicated
   // between merges
