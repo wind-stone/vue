@@ -38,9 +38,24 @@ export function validateProp (
   // boolean casting
   const booleanIndex = getTypeIndex(Boolean, prop.type)
   if (booleanIndex > -1) {
+    // prop 的 type 包含 Boolean 类型
     if (absent && !hasOwn(prop, 'default')) {
+      // 标签上没声明，且无默认值
       value = false
     } else if (value === '' || value === hyphenate(key)) {
+      // prop 定义时：
+      //
+      //  props: {
+      //    'is-validate': {
+      //      type: Boolean
+      //    },
+      //    'selected': {
+      //      type: [Boolean, String]
+      //    }
+      //  }
+      //
+      // 使用时： <some-component is-validate selected></some-component>
+
       // only cast empty string / same name to boolean if
       // boolean has higher priority
       const stringIndex = getTypeIndex(String, prop.type)
@@ -49,6 +64,7 @@ export function validateProp (
       }
     }
   }
+
   // check default value
   if (value === undefined) {
     value = getPropDefaultValue(vm, prop, key)
@@ -170,6 +186,13 @@ function assertProp (
 
 const simpleCheckRE = /^(String|Number|Boolean|Function|Symbol)$/
 
+
+/**
+ * `assertType`函数，验证`prop`的值符合指定的`type`类型，分为三类：
+ *   - 第一类：通过`typeof`判断的类型，如`String`、`Number`、`Boolean`、`Function`、`Symbol`
+ *   - 第二类：通过`Object.prototype.toString`判断`Object`/`Array`
+ *   - 第三类：通过`instanceof`判断自定义的引用类型
+ */
 function assertType (value: any, type: Function): {
   valid: boolean;
   expectedType: string;
@@ -202,6 +225,8 @@ function assertType (value: any, type: Function): {
  * Use function string name to check built-in types,
  * because a simple equality check will fail when running
  * across different vms / iframes.
+ *
+ * 获取构造函数的名称，比如 Boolean、Number 等
  */
 function getType (fn) {
   const match = fn && fn.toString().match(/^\s*function (\w+)/)

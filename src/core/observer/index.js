@@ -24,6 +24,9 @@ const arrayKeys = Object.getOwnPropertyNames(arrayMethods)
  */
 export let shouldObserve: boolean = true
 
+/**
+ * 在决定是否要给某个数据做响应式处理转换时，需要使用到`shouldConvert`，只有其中为`true`时，才进行响应式处理转换
+ */
 export function toggleObserving (value: boolean) {
   shouldObserve = value
 }
