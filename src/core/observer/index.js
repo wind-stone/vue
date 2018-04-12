@@ -44,10 +44,16 @@ export class Observer {
 
   constructor (value: any) {
     this.value = value
+
+    // ob 对象的 dep 属性，也是用来收集依赖，但只有在发生以下情况时，才会通知所有的 watcher
+    // 1. 对象添加/删除属性
+    // 2. 数组执行了变异方法，导致数组增加、删除元素、重排序
     this.dep = new Dep()
+
     this.vmCount = 0
     def(value, '__ob__', this)
     if (Array.isArray(value)) {
+      // 如果是数组，则重写数组的变异方法（变异方法执行后，将通知依赖方数组已经改变，如有必要，将给新增的元素做响应式处理）
       const augment = hasProto
         ? protoAugment
         : copyAugment
@@ -155,6 +161,7 @@ export function defineReactive (
   }
   const setter = property && property.set
 
+  // 递归地对 val 进行响应式处理，并返回 val 对应的 __ob__
   let childOb = !shallow && observe(val)
   Object.defineProperty(obj, key, {
     enumerable: true,
@@ -162,10 +169,13 @@ export function defineReactive (
     get: function reactiveGetter () {
       const value = getter ? getter.call(obj) : val
       if (Dep.target) {
+        // 1、收集依赖方，以便 val 的值自身变化时，通知 watcher
         dep.depend()
         if (childOb) {
+          // 2、收集依赖方，以便 val 动态增加/删除 属性/元素 的时候通知 watcher
           childOb.dep.depend()
           if (Array.isArray(value)) {
+            // 3、value 是数组，递归收集数组下每个元素的依赖方
             dependArray(value)
           }
         }
@@ -194,6 +204,10 @@ export function defineReactive (
 }
 
 /**
+ * 为了解决检测对象动态添加/删除属性的问题，Vue.js 里提供了全局的`Vue.set`、`Vue.del`方法，用于给某个已经经过响应式处理的对象来动态添加和删除属性，并触发通知。
+ */
+
+/**
  * Set a property on an object. Adds the new property and
  * triggers change notification if the property doesn't
  * already exist.
@@ -210,6 +224,7 @@ export function set (target: Array<any> | Object, key: any, val: any): any {
     return val
   }
   if (key in target && !(key in Object.prototype)) {
+    // 若 target 存在自有的 key 属性
     target[key] = val
     return val
   }
@@ -222,10 +237,13 @@ export function set (target: Array<any> | Object, key: any, val: any): any {
     return val
   }
   if (!ob) {
+    // 未经过响应式处理的引用类型
     target[key] = val
     return val
   }
+  // 给新增的属性做响应式处理，并通知依赖方
   defineReactive(ob.value, key, val)
+  // 注意：这里使用的是 ob.dep，而不是 defineReactive 函数里的闭包 dep，两个 dep 的作用不同
   ob.dep.notify()
   return val
 }
@@ -240,6 +258,7 @@ export function del (target: Array<any> | Object, key: any) {
     warn(`Cannot delete reactive property on undefined, null, or primitive value: ${(target: any)}`)
   }
   if (Array.isArray(target) && isValidArrayIndex(key)) {
+    // 数组
     target.splice(key, 1)
     return
   }
@@ -252,12 +271,14 @@ export function del (target: Array<any> | Object, key: any) {
     return
   }
   if (!hasOwn(target, key)) {
+    // 没有 key 的情况
     return
   }
   delete target[key]
   if (!ob) {
     return
   }
+  // 通知依赖方
   ob.dep.notify()
 }
 
