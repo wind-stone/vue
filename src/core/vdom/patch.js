@@ -820,7 +820,7 @@ export function createPatchFunction (backend) {
         // 新旧 VNode Tree 进行 patch
         patchVnode(oldVnode, vnode, insertedVnodeQueue, removeOnly)
       } else {
-        // 根组件实例首次 patch || （更新时）新旧 vnode 不能 patch
+        // 根组件实例首次 patch || （更新时）新旧 vnode 不是同一 vnode
         if (isRealElement) {
           // 根组件实例首次 patch
 

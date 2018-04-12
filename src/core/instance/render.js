@@ -58,8 +58,12 @@ export function renderMixin (Vue: Class<Component>) {
     return nextTick(fn, this)
   }
 
+  /**
+   * 返回最终生成的 VNode。
+   */
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
+    // 若是组件实例，则会存在 _parentVnode
     const { render, _parentVnode } = vm.$options
 
     // reset _rendered flag on slots for duplicate slot check

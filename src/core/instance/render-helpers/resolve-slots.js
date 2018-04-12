@@ -4,6 +4,8 @@ import type VNode from 'core/vdom/vnode'
 
 /**
  * Runtime helper for resolving raw children VNodes into a slot object.
+ * 返回 vnode 节点所有的 slots 对象
+ * { key: slot }
  */
 export function resolveSlots (
   children: ?Array<VNode>,
@@ -25,6 +27,7 @@ export function resolveSlots (
     if ((child.context === context || child.fnContext === context) &&
       data && data.slot != null
     ) {
+      // 命名插槽
       const name = data.slot
       const slot = (slots[name] || (slots[name] = []))
       if (child.tag === 'template') {
@@ -33,6 +36,7 @@ export function resolveSlots (
         slot.push(child)
       }
     } else {
+      // 默认插槽
       (slots.default || (slots.default = [])).push(child)
     }
   }
