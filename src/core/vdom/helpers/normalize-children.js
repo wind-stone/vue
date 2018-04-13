@@ -28,6 +28,9 @@ export function simpleNormalizeChildren (children: any) {
 // e.g. <template>, <slot>, v-for, or when the children is provided by user
 // with hand-written render functions / JSX. In such cases a full normalization
 // is needed to cater to all possible types of children values.
+/**
+ * 该函数是对创建元素时的`children`数据做标准化处理，最终保证返回的数组里的每个元素都是`VNode`类型。详见源码里的注释。
+ */
 export function normalizeChildren (children: any): ?Array<VNode> {
   return isPrimitive(children)
     ? [createTextVNode(children)]
@@ -51,12 +54,15 @@ function normalizeArrayChildren (children: any, nestedIndex?: string): Array<VNo
     //  nested
     if (Array.isArray(c)) {
       if (c.length > 0) {
+        // 递归获取 VNode 类型的数组
         c = normalizeArrayChildren(c, `${nestedIndex || ''}_${i}`)
         // merge adjacent text nodes
         if (isTextNode(c[0]) && isTextNode(last)) {
+          // 合并邻近的文本节点
           res[lastIndex] = createTextVNode(last.text + (c[0]: any).text)
           c.shift()
         }
+        // c 数组里的剩余元素推进 res 里
         res.push.apply(res, c)
       }
     } else if (isPrimitive(c)) {
@@ -64,9 +70,11 @@ function normalizeArrayChildren (children: any, nestedIndex?: string): Array<VNo
         // merge adjacent text nodes
         // this is necessary for SSR hydration because text nodes are
         // essentially merged when rendered to HTML strings
+        // 合并邻近的文本节点
         res[lastIndex] = createTextVNode(last.text + c)
       } else if (c !== '') {
         // convert primitive to vnode
+        // 创建新的文本节点
         res.push(createTextVNode(c))
       }
     } else {
