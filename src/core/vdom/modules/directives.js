@@ -1,5 +1,9 @@
 /* @flow */
 
+/**
+ * vnode patch 时，针对指令的创建、更新、销毁 hook
+ */
+
 import { emptyNode } from 'core/vdom/patch'
 import { resolveAsset, handleError } from 'core/util/index'
 import { mergeVNodeHook } from 'core/vdom/helpers/index'
@@ -33,12 +37,14 @@ function _update (oldVnode, vnode) {
     dir = newDirs[key]
     if (!oldDir) {
       // new directive, bind
+      // 新指令，调用 bind 钩子函数
       callHook(dir, 'bind', vnode, oldVnode)
       if (dir.def && dir.def.inserted) {
         dirsWithInsert.push(dir)
       }
     } else {
       // existing directive, update
+      // 已存在的指令，替换，调用 update 钩子函数
       dir.oldValue = oldDir.value
       callHook(dir, 'update', vnode, oldVnode)
       if (dir.def && dir.def.componentUpdated) {
@@ -54,6 +60,7 @@ function _update (oldVnode, vnode) {
       }
     }
     if (isCreate) {
+      // 合并到 vnode 的 insert 钩子，在元素插入父节点时调用
       mergeVNodeHook(vnode, 'insert', callInsert)
     } else {
       callInsert()
@@ -61,6 +68,7 @@ function _update (oldVnode, vnode) {
   }
 
   if (dirsWithPostpatch.length) {
+    // 合并到 vnode 的 postpatch 钩子，在组件的 VNode 及其子 VNode 全部更新后调用
     mergeVNodeHook(vnode, 'postpatch', () => {
       for (let i = 0; i < dirsWithPostpatch.length; i++) {
         callHook(dirsWithPostpatch[i], 'componentUpdated', vnode, oldVnode)
@@ -69,6 +77,7 @@ function _update (oldVnode, vnode) {
   }
 
   if (!isCreate) {
+    // 将不需要的旧指令与元素解绑
     for (key in oldDirs) {
       if (!newDirs[key]) {
         // no longer present, unbind
