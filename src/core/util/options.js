@@ -1,5 +1,20 @@
 /* @flow */
 
+/**
+ * Vue 里，当我们使用到`Vue.extend`、`Vue.mixin`全局方法或组件对象里的`mixins`选项和`extends`选项时，都会涉及到`options`合并的问题，现在我们来分析分析这些`options`是如何合并的。
+ *
+ * 组件选项对象里各个选项的合并方式都有可能不相同，根据合并方式进行如下分类：
+ * - `el`、`propsData`选项
+ * - `data`选项
+ * - 生命周期钩子选项
+ * - 资源选项（`components`、`directives`、`filters`）
+ * - `watch`选项
+ * - `props`、`methods`、`inject`、`computed`选项
+ * - `provide`选项
+
+注意：对于合并的每个`key`，基本上合并之后都是返回新的`value`引用对象。（方便后续比较`value`是否发生了变化）
+ */
+
 import config from '../config'
 import { warn } from './debug'
 import { nativeWatch } from './env'
@@ -29,6 +44,7 @@ const strats = config.optionMergeStrategies
 
 /**
  * Options with restrictions
+ * （非生产环境）通过`Vue.extend`、`Vue.mixin`全局方法合并`options`的方式不能存在`el`、`propsData`选项
  */
 if (process.env.NODE_ENV !== 'production') {
   strats.el = strats.propsData = function (parent, child, vm, key) {
@@ -44,6 +60,13 @@ if (process.env.NODE_ENV !== 'production') {
 
 /**
  * Helper that recursively merges two data objects together.
+ *
+ * data 选项合并
+ *
+ * to->child，from->parent，合并策略为：
+ * 1. 如果 child 不存在某个 key，则 parent 对应 key 的值为合并后值；
+ * 2. 如果 child 存在 key，且 child、parent 的 key 的值不都是对象，则 child 的 key 的值为合并后的值
+ * 3. 如果 child 的 key 的值和 parent 的 key 的值都为对象，则递归合并
  */
 function mergeData (to: Object, from: ?Object): Object {
   if (!from) return to
@@ -71,6 +94,8 @@ export function mergeDataOrFn (
   vm?: Component
 ): ?Function {
   if (!vm) {
+    // vm 不存在，即通过 Vue.extend、Vue.mixin 合并 options
+
     // in a Vue.extend merge, both should be functions
     if (!childVal) {
       return parentVal
@@ -83,6 +108,8 @@ export function mergeDataOrFn (
     // merged result of both functions... no need to
     // check if parentVal is a function here because
     // it has to be a function to pass previous merges.
+
+    // 返回一个 data function，等真正实例化的时候再调用
     return function mergedDataFn () {
       return mergeData(
         typeof childVal === 'function' ? childVal.call(this, this) : childVal,
@@ -90,6 +117,7 @@ export function mergeDataOrFn (
       )
     }
   } else {
+    // vm 存在，即通过 extends 选项、mixins 选项合并 options
     return function mergedInstanceDataFn () {
       // instance merge
       const instanceData = typeof childVal === 'function'
@@ -131,6 +159,10 @@ strats.data = function (
 
 /**
  * Hooks and props are merged as arrays.
+ *
+ * 生命周期钩子选项 合并
+ *
+ * 同一生命周期钩子合并成一数组，并且`parent`的钩子优先执行
  */
 function mergeHook (
   parentVal: ?Array<Function>,
@@ -155,6 +187,9 @@ LIFECYCLE_HOOKS.forEach(hook => {
  * When a vm is present (instance creation), we need to do
  * a three-way merge between constructor options, instance
  * options and parent options.
+ *
+ * 资源选项 合并
+ * `component`、`directive`、`filter`等资源选项合并时，默认会让`child`里`options`的资源的每一项覆盖`parent`里`options`的资源的每一项。
  */
 function mergeAssets (
   parentVal: ?Object,
@@ -180,6 +215,10 @@ ASSET_TYPES.forEach(function (type) {
  *
  * Watchers hashes should not overwrite one
  * another, so we merge them as arrays.
+ *
+ * `watch`选项 合并
+ *
+ * 同名的`watch`合并成一数组，并且`parent`的`watch`回调优先执行
  */
 strats.watch = function (
   parentVal: ?Object,
@@ -213,6 +252,10 @@ strats.watch = function (
 
 /**
  * Other object hashes.
+ *
+ * `props`、`methods`、`inject`、`computed`选项合并
+ *
+ * 在`props`、`methods`、`inject`、`computed`这些选项里，如果存在同名的`key`，则`child`的`value`将覆盖`parent`的`value`
  */
 strats.props =
 strats.methods =
@@ -236,6 +279,8 @@ strats.provide = mergeDataOrFn
 
 /**
  * Default strategy.
+ *
+ * 默认的合并策略，如果 childVal 存在则使用 childVal，否则使用 parentVal
  */
 const defaultStrat = function (parentVal: any, childVal: any): any {
   return childVal === undefined
@@ -361,6 +406,14 @@ function assertObjectType (name: string, value: any, vm: ?Component) {
 /**
  * Merge two option objects into a new one.
  * Core utility used in both instantiation and inheritance.
+ *
+ * 合并两个 options 选项，返回新建的 options 对象
+ *
+ * 当合并`parent`、`child`两个`options`的时候，会先将`parent`与`child`的`extends`选项、`mixins`选项里的组件定义对象先合并。因此，最终的合并顺序如下：
+ *
+ * 1. `parent`与`child.extends`合并成新的`parent`组件选项对象
+ * 2. `parent`依次与`child.mixins`合并成新的`parent`组件选项对象
+ * 3. `parent`与`child`合并成最终的组件选项对象
  */
 export function mergeOptions (
   parent: Object,
@@ -368,13 +421,16 @@ export function mergeOptions (
   vm?: Component
 ): Object {
   if (process.env.NODE_ENV !== 'production') {
+    // 检查 option 里的 components 的 name 是否符合要求
     checkComponents(child)
   }
 
   if (typeof child === 'function') {
+    // 这里是什么场景？
     child = child.options
   }
 
+  // 格式化 props、inject、directives 为对象格式
   normalizeProps(child, vm)
   normalizeInject(child, vm)
   normalizeDirectives(child)
@@ -390,14 +446,17 @@ export function mergeOptions (
   const options = {}
   let key
   for (key in parent) {
+    // 先合并 parent 里有的选项
     mergeField(key)
   }
   for (key in child) {
     if (!hasOwn(parent, key)) {
+      // 再合并 child 里有但 parent 里没有的选项，避免重复合并
       mergeField(key)
     }
   }
   function mergeField (key) {
+    // 优先使用选项单独的合并策略，没有的话使用默认策略
     const strat = strats[key] || defaultStrat
     options[key] = strat(parent[key], child[key], vm, key)
   }
