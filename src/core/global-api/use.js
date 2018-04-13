@@ -6,6 +6,7 @@ export function initUse (Vue: GlobalAPI) {
   Vue.use = function (plugin: Function | Object) {
     const installedPlugins = (this._installedPlugins || (this._installedPlugins = []))
     if (installedPlugins.indexOf(plugin) > -1) {
+      // 如果插件已经安装，则直接返回
       return this
     }
 
