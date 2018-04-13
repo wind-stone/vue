@@ -135,7 +135,44 @@ export function createPatchFunction (backend) {
   let creatingElmInVPre = 0
 
   /**
-   * 创建节点，若是非组件节点则插入到父元素里
+   * `createElm`函数是为`vnode`节点创建关联的 DOM 元素，其步骤如下：
+   *
+   * 1. 调用`createComponent`函数创建组件`vnode`对应的元素
+   *     - 若`vnode.data.hook.init()`钩子函数存在
+   *         - 则调用`init()`钩子函数生成`vnode.componentInstance`并渲染、挂载到父元素
+   *             - 注意：`vm.$mount()`里会新建渲染`watcher`，执行`vm._update(vm._render())`
+   *             - 注意：此过程将以`componentInstance`为中心，创建其下所有的子元素、子组件
+   *     - 若上一步有生成`vnode.componentInstance`
+   *         - 调用`initComponent`函数，初始化组件实例
+   *             - `vnode.elm = vnode.componentInstance.$el`
+   *             - 若`isPatchable(vnode)`
+   *                 - 调用`invokeCreateHooks`，执行`create`钩子函数
+   *                 - 设置`vnode`的 scope
+   *             - 若`!isPatchable(vnode)`
+   *                 - 注册`ref`
+   *                 - `insertedVnodeQueue.push(vnode)`
+   *         - 返回，不再继续往下
+   *     - 若上一步没生成`vnode.componentInstance`，进入下一步
+   * 2. 创建非组件元素（正常 HTML 元素、注释、文本节点）
+   *     - HTML 元素节点
+   *         - 创建`vnode`对应的 DOM 元素`vnode.elm`
+   *         - 设置`vnode`的 scope
+   *         - 调用`createChildren`创建子节点
+   *             - 若子节点是数组
+   *                 - （非生产环境）子节点去重
+   *                 - 循环调用`createElm`创建子虚拟节点对应的 DOM 元素
+   *             - 若 vnode 是仅包含文本的元素
+   *                 - 创建文本节点并插入到`vnode.elm`
+   *         - （如果有）调用`invokeCreateHooks`，执行`create`钩子函数
+   *         - 将`vnode.elm`插入到父元素
+   *     - 注释/文本节点
+   *         - 创建注释/文本节点`vnode.elm`
+   *         - 将`vnode.elm`插入到父元素
+   *
+   * 需要注意的是，
+   * - 若`createElm`创建的是 HTML 元素（即`vnode.tag`为正常的 HTML 标签），生成对应的 DOM 元素后，会调用`createChildren`函数创建子节点，进而递归调用`createElm`创建子孙节点
+   * - 若`createElm`创建的是组件节点（即`vnode`是占位虚拟节点，`vnode.tag`为`vue-component-${cid}-${name}`形式），则会以该组件为起点，递归创建该组件以下的所有子孙节点
+   *
    * @param {*} vnode 虚拟节点
    * @param {*} insertedVnodeQueue
    * @param {*} parentElm 父元素（基本都会有，除了一种情况，在 patch 函数里）
@@ -795,6 +832,15 @@ export function createPatchFunction (backend) {
     }
   }
 
+
+  /**
+   * 执行`patch`函数，是为了将根实例/组件生成的 VNode Tree 转变成 DOM Tree，最后插入到文档内。在此过程中，会新增 DOM 元素、修补（patch）DOM 元素、删除 DOM 元素。
+
+   * - 组件创建时，会首次调用`patch`，会根据 VNode Tree 生成 DOM Tree，DOM Tree 里所有元素都是新创建的。
+   *     - 深度递归生成 DOM Tree
+   * - 组件发生改变时，每次都会调用`patch`，会根据改变前后的 VNode Tree 修改 DOM Tree，该过程可能会新增 DOM 元素、修补（patch）DOM 元素、删除 DOM 元素。
+   * - 组件销毁时，最后一次调用`patch`，会销毁 DOM Tree。
+   */
   return function patch (oldVnode, vnode, hydrating, removeOnly, parentElm, refElm) {
     if (isUndef(vnode)) {
       // 销毁 vnode 节点
