@@ -144,7 +144,7 @@ export function createComponent (
   const baseCtor = context.$options._base
 
   // plain options object: turn it into a constructor
-  // 将组件选项对象转换成构造函数
+  // 组件选项对象：转换成构造函数
   if (isObject(Ctor)) {
     Ctor = baseCtor.extend(Ctor)
   }
@@ -163,14 +163,24 @@ export function createComponent (
   let asyncFactory
   if (isUndef(Ctor.cid)) {
     asyncFactory = Ctor
-    // 处理异步组件，返回构造函数（如果是同步，返回的即为构造函数；如果是异步，则返回的为 undefined）
+    /**
+     * 解析异步组件
+     *
+     * - 首次解析
+     *   - 若工厂函数同步 resolve 组件选项对象，则返回基于组件选项对象扩展的构造函数
+     *   - 若工厂函数异步 resolve 组件选项对象
+     *     - 若是高级异步组件 && 存在加载中组件 && delay 为 0，则返回基于加载中组件选项对象扩展的构造函数
+     *     - 否则，返回 undefined（之后会强制渲染，再次解析异步组件）
+     * - 再次解析
+     *   - 若组件加载出错 && 高级异步组件存在出错时组件，返回基于出错时的组件选项对象扩展的构造函数
+     *   - 若组件异步加载成功，返回基于组件选项对象扩展的构造函数
+     *   - 若 delay 时间到达 && 仍处于异步加载过程中 && 高级异步组件存在加载中组件，返回基于加载中组件选项对象扩展的构造函数
+     */
     Ctor = resolveAsyncComponent(asyncFactory, baseCtor, context)
     if (Ctor === undefined) {
       // return a placeholder node for async component, which is rendered
       // as a comment node but preserves all the raw information for the node.
       // the information will be used for async server-rendering and hydration.
-      // 如果异步组件里，需要异步去获取组件选项对象，那么调用 resolveAsyncComponent 函数返回的为 undefined
-      // 此时，返回一个空的 vnode 节点
       return createAsyncPlaceholder(
         asyncFactory,
         data,

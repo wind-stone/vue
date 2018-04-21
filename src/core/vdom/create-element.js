@@ -50,7 +50,7 @@ export function createElement (
  * 生成`VNode`类型的元素，同时调用`normalizeChildren`/`simpleNormalizeChildren`保证其子元素也都是`VNode`类型。
  */
 export function _createElement (
-  context: Component,
+  context: Component, // 元素创建时的当前组件实例
   tag?: string | Class<Component> | Function | Object,
   data?: VNodeData,
   children?: any,
@@ -58,11 +58,11 @@ export function _createElement (
 ): VNode | Array<VNode> {
   if (isDef(data) && isDef((data: any).__ob__)) {
     // 这里影响显示效果，暂先注释
-    process.env.NODE_ENV !== 'production' && warn(
-      `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
-      'Always create fresh vnode data objects in each render!',
-      context
-    )
+    // process.env.NODE_ENV !== 'production' && warn(
+    //   `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
+    //   'Always create fresh vnode data objects in each render!',
+    //   context
+    // )
     return createEmptyVNode()
   }
   // object syntax in v-bind
