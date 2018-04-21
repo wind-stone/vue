@@ -5,7 +5,7 @@ import type VNode from 'core/vdom/vnode'
 /**
  * Runtime helper for resolving raw children VNodes into a slot object.
  * 返回 vnode 节点所有的 slots 对象
- * { key: slot }
+ * { key: slot数组 }
  */
 export function resolveSlots (
   children: ?Array<VNode>,

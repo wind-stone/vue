@@ -41,6 +41,7 @@ export function renderSlot (
     nodes = slotNodes || fallback
   }
 
+  // target 为 slot 的名称
   const target = props && props.slot
   if (target) {
     return this.$createElement('template', { slot: target }, nodes)

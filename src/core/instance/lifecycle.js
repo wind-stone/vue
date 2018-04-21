@@ -248,6 +248,10 @@ export function mountComponent (
   return vm
 }
 
+
+/**
+ * 更新组件的 props、listeners、slots 等
+ */
 export function updateChildComponent (
   vm: Component,
   propsData: ?Object,
@@ -274,6 +278,7 @@ export function updateChildComponent (
   if (vm._vnode) { // update child tree's parent
     vm._vnode.parent = parentVnode
   }
+  // 替换为新的 static slots
   vm.$options._renderChildren = renderChildren
 
   // update $attrs and $listeners hash
@@ -283,6 +288,7 @@ export function updateChildComponent (
   vm.$listeners = listeners || emptyObject
 
   // update props
+  // 更新组件的 props
   if (propsData && vm.$options.props) {
     toggleObserving(false)
     const props = vm._props
