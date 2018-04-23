@@ -36,7 +36,8 @@ Vue.prototype.$mount = function (
     let template = options.template
     if (template) {
       if (typeof template === 'string') {
-        // template 为字符串模板或 # 开头的选择器
+        // X-Template
+        // https://cn.vuejs.org/v2/guide/components.html#X-Template
         if (template.charAt(0) === '#') {
           template = idToTemplate(template)
           /* istanbul ignore if */
@@ -48,7 +49,8 @@ Vue.prototype.$mount = function (
           }
         }
       } else if (template.nodeType) {
-        // template 为 DOM 元素
+        // 内联模板
+        // https://cn.vuejs.org/v2/guide/components.html#%E5%86%85%E8%81%94%E6%A8%A1%E6%9D%BF
         template = template.innerHTML
       } else {
         if (process.env.NODE_ENV !== 'production') {
@@ -57,6 +59,7 @@ Vue.prototype.$mount = function (
         return this
       }
     } else if (el) {
+      // 若 options.template 不存在，则将挂载元素作为模板
       template = getOuterHTML(el)
     }
     if (template) {
@@ -67,9 +70,12 @@ Vue.prototype.$mount = function (
 
       // 将 template 编译成 render 函数
       const { render, staticRenderFns } = compileToFunctions(template, {
+        // 编译模板时，是否要对换行符（\n）进行解码
         shouldDecodeNewlines,
         shouldDecodeNewlinesForHref,
+        // 改变纯文本插入分隔符。new Vue({ delimiters: ['${', '}'] }) // 分隔符变成了 ES6 模板字符串的风格
         delimiters: options.delimiters,
+        // 若 comments 为 true，将会保留且渲染模板中的 HTML 注释。默认行为是舍弃它们。
         comments: options.comments
       }, this)
       options.render = render
