@@ -17,6 +17,7 @@ export function createCompilerCreator (baseCompile: Function): Function {
         (tip ? tips : errors).push(msg)
       }
 
+      // 合并 baseOptions 和传入的 options
       if (options) {
         // merge custom modules
         if (options.modules) {
