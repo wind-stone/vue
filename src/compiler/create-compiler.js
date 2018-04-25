@@ -18,6 +18,9 @@ export function createCompilerCreator (baseCompile: Function): Function {
       }
 
       // 合并 baseOptions 和传入的 options
+      // modules 是数组，合并数组
+      // directives 是对象，合并对象，options.directives 优先使用
+      // 其他属性优先使用 options.xxx
       if (options) {
         // merge custom modules
         if (options.modules) {
