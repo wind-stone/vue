@@ -13,6 +13,24 @@ import { makeMap, no } from 'shared/util'
 import { isNonPhrasingTag } from 'web/compiler/util'
 
 // Regular Expressions for parsing tags and attributes
+/**
+ * attribute 正则分析
+ *
+ * /
+ * ^\s*([^\s"'<>\/=]+)  特性的名称
+ *  (?:
+ *    \s*
+ *    (=)  特性的等号
+ *    \s*
+ *    (?:
+ *      "([^"]*)"+|     用双引号""包含起来的特性值
+ *      '([^']*)'+|     用单引号''包含起来的特性值
+ *      ([^\s"'=<>`]+)  不用单双引号包含起来的特性值
+ *    )
+ *  )?
+ * /
+ *
+ */
 const attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
 // could use https://www.w3.org/TR/1999/REC-xml-names-19990114/#NT-QName
 // but for Vue templates we can enforce a simple charset
@@ -69,6 +87,7 @@ export function parseHTML (html, options) {
       let textEnd = html.indexOf('<')
       if (textEnd === 0) {
         // Comment:
+        // html 以 正常注释文本 开头，去掉注释继续下一次循环
         if (comment.test(html)) {
           const commentEnd = html.indexOf('-->')
 
@@ -82,6 +101,7 @@ export function parseHTML (html, options) {
         }
 
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
+        // html 以 IE条件注释文本 开头，去掉注释继续下一次循环
         if (conditionalComment.test(html)) {
           const conditionalEnd = html.indexOf(']>')
 
@@ -92,6 +112,7 @@ export function parseHTML (html, options) {
         }
 
         // Doctype:
+        // html 以 Doctype 开头，去掉 Doctype 继续下一次循环
         const doctypeMatch = html.match(doctype)
         if (doctypeMatch) {
           advance(doctypeMatch[0].length)
@@ -99,6 +120,7 @@ export function parseHTML (html, options) {
         }
 
         // End tag:
+        // html 以结束标签开头，去掉结束标签继续下一次循环，并处理结束标签
         const endTagMatch = html.match(endTag)
         if (endTagMatch) {
           const curIndex = index
@@ -186,6 +208,9 @@ export function parseHTML (html, options) {
     html = html.substring(n)
   }
 
+  /**
+   * 解析开始标签
+   */
   function parseStartTag () {
     const start = html.match(startTagOpen)
     if (start) {
@@ -196,11 +221,13 @@ export function parseHTML (html, options) {
       }
       advance(start[0].length)
       let end, attr
+      // 没匹配到开始标签的关闭 && 匹配到特性
       while (!(end = html.match(startTagClose)) && (attr = html.match(attribute))) {
         advance(attr[0].length)
         match.attrs.push(attr)
       }
       if (end) {
+        // 一元标签的 slash
         match.unarySlash = end[1]
         advance(end[0].length)
         match.end = index
@@ -209,6 +236,15 @@ export function parseHTML (html, options) {
     }
   }
 
+  /**
+   * 处理开始标签
+   * @param {*} match 开始标签的正则匹配结果
+   *   {String} tagName 标签名
+   *   {Array} attrs 特性数组，元素为特性的正则匹配结果
+   *   {Number} start 开始标签的位置
+   *   {Number} end 可选，开始标签的位置（> 的下一位置）
+   *   {String} unarySlash 可选，一元开始标签的 /
+   */
   function handleStartTag (match) {
     const tagName = match.tagName
     const unarySlash = match.unarySlash
@@ -226,6 +262,7 @@ export function parseHTML (html, options) {
 
     const l = match.attrs.length
     const attrs = new Array(l)
+    // 处理特性的 name 和 value
     for (let i = 0; i < l; i++) {
       const args = match.attrs[i]
       // hackish work around FF bug https://bugzilla.mozilla.org/show_bug.cgi?id=369778
@@ -244,16 +281,24 @@ export function parseHTML (html, options) {
       }
     }
 
+    // 非一元标签，推入栈中（等待结束标签）
     if (!unary) {
       stack.push({ tag: tagName, lowerCasedTag: tagName.toLowerCase(), attrs: attrs })
       lastTag = tagName
     }
 
+    // 
     if (options.start) {
       options.start(tagName, attrs, unary, match.start, match.end)
     }
   }
 
+  /**
+   * 解析结束标签
+   * @param {*} tagName 结束标签名
+   * @param {*} start 结束标签的开始位置（即 </xxx> 的 < 的位置）
+   * @param {*} end 结束标签的结束位置（即 </xxx> 的 > 的下一位置）
+   */
   function parseEndTag (tagName, start, end) {
     let pos, lowerCasedTagName
     if (start == null) start = index
@@ -264,6 +309,7 @@ export function parseHTML (html, options) {
     }
 
     // Find the closest opened tag of the same type
+    // 查找 stack 栈里最后进栈的相同标签
     if (tagName) {
       for (pos = stack.length - 1; pos >= 0; pos--) {
         if (stack[pos].lowerCasedTag === lowerCasedTagName) {
