@@ -120,6 +120,9 @@ export function addHandler (
   el.plain = false
 }
 
+/**
+ * 获取 AST 元素上绑定的特性的值；若绑定值不存在，获取静态值
+ */
 export function getBindingAttr (
   el: ASTElement,
   name: string,
@@ -142,6 +145,9 @@ export function getBindingAttr (
 // doesn't get processed by processAttrs.
 // By default it does NOT remove it from the map (attrsMap) because the map is
 // needed during codegen.
+/**
+ * 获取 AST 元素上的特性的值，并从 AST 元素的 attrsList 和 attrsMap（可选）将特性删除
+ */
 export function getAndRemoveAttr (
   el: ASTElement,
   name: string,

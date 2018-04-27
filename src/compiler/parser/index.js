@@ -71,6 +71,7 @@ export function parse (
   platformMustUseProp = options.mustUseProp || no
   platformGetTagNamespace = options.getTagNamespace || no
 
+  // 获取每个 modules 对应的 transformNode、preTransformNode、postTransformNode 函数
   transforms = pluckModuleFunction(options.modules, 'transformNode')
   preTransforms = pluckModuleFunction(options.modules, 'preTransformNode')
   postTransforms = pluckModuleFunction(options.modules, 'postTransformNode')
@@ -114,6 +115,7 @@ export function parse (
     shouldDecodeNewlines: options.shouldDecodeNewlines,
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
+
     start (tag, attrs, unary) {
       // check namespace.
       // inherit parent ns if there is one
@@ -125,6 +127,7 @@ export function parse (
         attrs = guardIESVGBug(attrs)
       }
 
+      // 创建 AST 元素
       let element: ASTElement = createASTElement(tag, attrs, currentParent)
       if (ns) {
         element.ns = ns
@@ -147,10 +150,12 @@ export function parse (
       if (!inVPre) {
         processPre(element)
         if (element.pre) {
+          // 存在 v-pre 特性
           inVPre = true
         }
       }
       if (platformIsPreTag(element.tag)) {
+        // 判断是否是 pre 标签
         inPre = true
       }
       if (inVPre) {
@@ -290,6 +295,9 @@ export function parse (
   return root
 }
 
+/**
+ * 处理 v-pre 特性，若有，ASTElement 上添加 pre 属性为 true
+ */
 function processPre (el) {
   if (getAndRemoveAttr(el, 'v-pre') != null) {
     el.pre = true
@@ -312,6 +320,21 @@ function processRawAttrs (el) {
   }
 }
 
+
+/**
+ * 处理元素上特性，包括：key、ref、slot、is、inline-template 等
+ *
+ * ASTElement 元素上新增如下属性
+ * {
+ *   key,
+ *   ref,
+ *   refInFor,  // Boolean，若有 ref，该值表明该元素是否存在某个有 v-for 的祖先元素里
+ *
+ *   attrs, // Array，数组元素为对象：{ name, value }
+ *   component, // 动态组件 is 的值
+ *   inlineTemplate, // 是否是内联模板
+ * }
+ */
 export function processElement (element: ASTElement, options: CompilerOptions) {
   processKey(element)
 
@@ -328,6 +351,9 @@ export function processElement (element: ASTElement, options: CompilerOptions) {
   processAttrs(element)
 }
 
+/**
+ * 获取 key 的值，添加到 AST 元素上
+ */
 function processKey (el) {
   const exp = getBindingAttr(el, 'key')
   if (exp) {
@@ -338,6 +364,9 @@ function processKey (el) {
   }
 }
 
+/**
+ * 获取 ref 的值，添加到 AST 元素上
+ */
 function processRef (el) {
   const ref = getBindingAttr(el, 'ref')
   if (ref) {
@@ -346,6 +375,9 @@ function processRef (el) {
   }
 }
 
+/**
+ * 处理 v-for，将结果添加到 AST 元素里
+ */
 export function processFor (el: ASTElement) {
   let exp
   if ((exp = getAndRemoveAttr(el, 'v-for'))) {
@@ -367,7 +399,25 @@ type ForParseResult = {
   iterator2?: string;
 };
 
+
+/**
+ * 解析 v-for 里的值，返回解析结果
+ * {
+ *   for: xxx,        // 要循环的 数组 或 对象
+ *   alias: xxx,      // item
+ *   iterator1: xxx,  // key
+ *   iterator2: xxx   // index
+ * }
+ *
+ * 主要用三种形式（in 和 of 都行）：
+ * 1. value in object/array
+ * 2. (value, key) in object/array
+ * 3. (value, key, index) in object
+ */
 export function parseFor (exp: string): ?ForParseResult {
+  // forAliasRE = /([^]*?)\s+(?:in|of)\s+([^]*)/         匹配整个 v-for 里的值
+  // stripParensRE = /^\(|\)$/g                          匹配 ( 和 )
+  // forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/
   const inMatch = exp.match(forAliasRE)
   if (!inMatch) return
   const res = {}
@@ -375,9 +425,13 @@ export function parseFor (exp: string): ?ForParseResult {
   const alias = inMatch[1].trim().replace(stripParensRE, '')
   const iteratorMatch = alias.match(forIteratorRE)
   if (iteratorMatch) {
+    // 匹配形式 2 和形式 3
+    // value
     res.alias = alias.replace(forIteratorRE, '')
+    // key
     res.iterator1 = iteratorMatch[1].trim()
     if (iteratorMatch[2]) {
+      // index
       res.iterator2 = iteratorMatch[2].trim()
     }
   } else {
@@ -386,6 +440,9 @@ export function parseFor (exp: string): ?ForParseResult {
   return res
 }
 
+/**
+ * 处理 v-if、v-else、v-else-if 特性，在 ASTElement 上添加 if、else、ifElse 属性
+ */
 function processIf (el) {
   const exp = getAndRemoveAttr(el, 'v-if')
   if (exp) {
@@ -444,6 +501,9 @@ export function addIfCondition (el: ASTElement, condition: ASTIfCondition) {
   el.ifConditions.push(condition)
 }
 
+/**
+ * 处理 v-once 特性
+ */
 function processOnce (el) {
   const once = getAndRemoveAttr(el, 'v-once')
   if (once != null) {
@@ -451,8 +511,12 @@ function processOnce (el) {
   }
 }
 
+/**
+ * 处理 slot
+ */
 function processSlot (el) {
   if (el.tag === 'slot') {
+    // （子组件模板内）slot 元素
     el.slotName = getBindingAttr(el, 'name')
     if (process.env.NODE_ENV !== 'production' && el.key) {
       warn(
@@ -462,6 +526,7 @@ function processSlot (el) {
       )
     }
   } else {
+    // （父组件模板内，定义的子组件<child></child>里）要分发的内容
     let slotScope
     if (el.tag === 'template') {
       slotScope = getAndRemoveAttr(el, 'scope')
@@ -488,11 +553,13 @@ function processSlot (el) {
       }
       el.slotScope = slotScope
     }
+    // 要将内容分发到的 slot 的名称
     const slotTarget = getBindingAttr(el, 'slot')
     if (slotTarget) {
       el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget
       // preserve slot as an attribute for native shadow DOM compat
       // only for non-scoped slots.
+      // 若是一般插槽（非作用域插槽），将要分发到的 slot 的名称保存在元素的 slot 特性里
       if (el.tag !== 'template' && !el.slotScope) {
         addAttr(el, 'slot', slotTarget)
       }
@@ -517,11 +584,14 @@ function processAttrs (el) {
     name = rawName = list[i].name
     value = list[i].value
     if (dirRE.test(name)) {
+      // 若是指令
       // mark element as dynamic
       el.hasBindings = true
       // modifiers
+      // 修饰符
       modifiers = parseModifiers(name)
       if (modifiers) {
+        // 移除修饰符
         name = name.replace(modifierRE, '')
       }
       if (bindRE.test(name)) { // v-bind
@@ -593,6 +663,9 @@ function processAttrs (el) {
   }
 }
 
+/**
+ * 检查元素是否在 v-for 里
+ */
 function checkInFor (el: ASTElement): boolean {
   let parent = el
   while (parent) {
@@ -604,6 +677,9 @@ function checkInFor (el: ASTElement): boolean {
   return false
 }
 
+/**
+ * 解析指令上的修饰符，比如 v-click.prevent
+ */
 function parseModifiers (name: string): Object | void {
   const match = name.match(modifierRE)
   if (match) {
@@ -613,6 +689,9 @@ function parseModifiers (name: string): Object | void {
   }
 }
 
+/**
+ * 将属性对象数组转变成属性 hash map
+ */
 function makeAttrsMap (attrs: Array<Object>): Object {
   const map = {}
   for (let i = 0, l = attrs.length; i < l; i++) {
@@ -632,6 +711,9 @@ function isTextTag (el): boolean {
   return el.tag === 'script' || el.tag === 'style'
 }
 
+/**
+ * 模板内不能存在 style 和 script 标签
+ */
 function isForbiddenTag (el): boolean {
   return (
     el.tag === 'style' ||
