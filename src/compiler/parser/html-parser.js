@@ -209,9 +209,19 @@ export function parseHTML (html, options) {
   }
 
   /**
-   * 解析开始标签
+   * 解析开始标签，返回结果对象
+   * {
+   *   tagName, 标签名
+   *   attrs, 特性对象数组
+   *   start, 开始标签在 template 里的开始位置
+   *   end, （可选）开始标签在 template 里的结束位置
+   *   unarySlash, 一元标签的 /
+   * }
    */
   function parseStartTag () {
+    // ncname = '[a-zA-Z_][\\w\\-\\.]*'
+    // qnameCapture = `((?:${ncname}\\:)?${ncname})`
+    // startTagOpen = new RegExp(`^<${qnameCapture}`)
     const start = html.match(startTagOpen)
     if (start) {
       const match = {
@@ -238,7 +248,7 @@ export function parseHTML (html, options) {
 
   /**
    * 处理开始标签
-   * @param {*} match 开始标签的正则匹配结果
+   * @param {Object} match 开始标签的正则匹配结果
    *   {String} tagName 标签名
    *   {Array} attrs 特性数组，元素为特性的正则匹配结果
    *   {Number} start 开始标签的位置
@@ -281,13 +291,12 @@ export function parseHTML (html, options) {
       }
     }
 
-    // 非一元标签，推入栈中（等待结束标签）
+    // 非一元标签，推入栈中（等待结束标签），更新 lastTag
     if (!unary) {
       stack.push({ tag: tagName, lowerCasedTag: tagName.toLowerCase(), attrs: attrs })
       lastTag = tagName
     }
 
-    // 
     if (options.start) {
       options.start(tagName, attrs, unary, match.start, match.end)
     }
@@ -309,7 +318,7 @@ export function parseHTML (html, options) {
     }
 
     // Find the closest opened tag of the same type
-    // 查找 stack 栈里最后进栈的相同标签
+    // 查找 stack 栈里最后进栈的相同标签，若找不到相同标签，pos 为 -1
     if (tagName) {
       for (pos = stack.length - 1; pos >= 0; pos--) {
         if (stack[pos].lowerCasedTag === lowerCasedTagName) {
@@ -323,6 +332,7 @@ export function parseHTML (html, options) {
 
     if (pos >= 0) {
       // Close all the open elements, up the stack
+      // 对于没闭合的标签，发出警告，并调用 options.end
       for (let i = stack.length - 1; i >= pos; i--) {
         if (process.env.NODE_ENV !== 'production' &&
           (i > pos || !tagName) &&
@@ -345,6 +355,7 @@ export function parseHTML (html, options) {
         options.start(tagName, [], true, start, end)
       }
     } else if (lowerCasedTagName === 'p') {
+      // 手动添加开始标签
       if (options.start) {
         options.start(tagName, [], false, start, end)
       }

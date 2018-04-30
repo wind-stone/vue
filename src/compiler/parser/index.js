@@ -93,6 +93,9 @@ export function parse (
     }
   }
 
+  /**
+   * 关闭元素、清理 inVPre、inPre 标记，应用 postTransforms
+   */
   function closeElement (element) {
     // check pre state
     if (element.pre) {
@@ -116,6 +119,12 @@ export function parse (
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
 
+    /**
+     * 解析出 html 里的元素后，创建 AST 元素
+     * @param {String} tag 元素的标签名
+     * @param {Array} attrs 特性对象数组
+     * @param {Boolean} unary 是否是一元标签
+     */
     start (tag, attrs, unary) {
       // check namespace.
       // inherit parent ns if there is one
@@ -143,6 +152,7 @@ export function parse (
       }
 
       // apply pre-transforms
+      // 转换前的预处理
       for (let i = 0; i < preTransforms.length; i++) {
         element = preTransforms[i](element, options) || element
       }
@@ -187,6 +197,7 @@ export function parse (
       }
 
       // tree management
+      // 设置 AST 树的根节点，并检查约束条件
       if (!root) {
         root = element
         checkRootConstraints(root)
@@ -218,6 +229,7 @@ export function parse (
           element.parent = currentParent
         }
       }
+      // 非一元标签，推入栈中，更新 currentParent
       if (!unary) {
         currentParent = element
         stack.push(element)
@@ -462,6 +474,9 @@ function processIf (el) {
   }
 }
 
+/**
+ * 处理带有 v-elseif 和 v-else 的元素，查找对应的 v-if 的元素
+ */
 function processIfConditions (el, parent) {
   const prev = findPrevElement(parent.children)
   if (prev && prev.if) {
@@ -577,14 +592,19 @@ function processComponent (el) {
   }
 }
 
+/**
+ * 处理 attributes
+ */
 function processAttrs (el) {
   const list = el.attrsList
   let i, l, name, rawName, value, modifiers, isProp
   for (i = 0, l = list.length; i < l; i++) {
     name = rawName = list[i].name
     value = list[i].value
+    // const dirRE = /^v-|^@|^:/
     if (dirRE.test(name)) {
-      // 若是指令
+      // 处理指令
+
       // mark element as dynamic
       el.hasBindings = true
       // modifiers
@@ -594,8 +614,11 @@ function processAttrs (el) {
         // 移除修饰符
         name = name.replace(modifierRE, '')
       }
+      // 处理 v-bind 指令
+      // bindRE = /^:|^v-bind:/
       if (bindRE.test(name)) { // v-bind
         name = name.replace(bindRE, '')
+        // 处理过滤器
         value = parseFilters(value)
         isProp = false
         if (modifiers) {
@@ -608,6 +631,7 @@ function processAttrs (el) {
             name = camelize(name)
           }
           if (modifiers.sync) {
+            // 将数据的双向绑定改为单项数据流 + 显示地传递事件给父组件修改数据的形式
             addHandler(
               el,
               `update:${camelize(name)}`,
@@ -640,6 +664,7 @@ function processAttrs (el) {
       }
     } else {
       // literal attribute
+      // 非指令特性
       if (process.env.NODE_ENV !== 'production') {
         const res = parseText(value, delimiters)
         if (res) {
@@ -681,6 +706,7 @@ function checkInFor (el: ASTElement): boolean {
  * 解析指令上的修饰符，比如 v-click.prevent
  */
 function parseModifiers (name: string): Object | void {
+  // modifierRE = /\.[^.]+/g
   const match = name.match(modifierRE)
   if (match) {
     const ret = {}
