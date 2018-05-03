@@ -73,6 +73,11 @@ function decodeAttr (value, shouldDecodeNewlines) {
   return value.replace(re, match => decodingMap[match])
 }
 
+/**
+ * 解析 html 模板
+ * @param {String} html 模板
+ * @param {Object} options 选项对象
+ */
 export function parseHTML (html, options) {
   const stack = []
   const expectHTML = options.expectHTML
@@ -85,14 +90,17 @@ export function parseHTML (html, options) {
     // Make sure we're not in a plaintext content element like script/style
     if (!lastTag || !isPlainTextElement(lastTag)) {
       let textEnd = html.indexOf('<')
+      // 匹配注释、IE条件注释、doctype、开始标签、结束标签
       if (textEnd === 0) {
         // Comment:
-        // html 以 正常注释文本 开头，去掉注释继续下一次循环
+        // html 以 正常注释文本 开头：去掉注释继续下一次循环
+        // comment = /^<!\--/
         if (comment.test(html)) {
           const commentEnd = html.indexOf('-->')
 
           if (commentEnd >= 0) {
             if (options.shouldKeepComment) {
+              // 处理 注释内容
               options.comment(html.substring(4, commentEnd))
             }
             advance(commentEnd + 3)
@@ -101,7 +109,8 @@ export function parseHTML (html, options) {
         }
 
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
-        // html 以 IE条件注释文本 开头，去掉注释继续下一次循环
+        // html 以 IE条件注释文本 开头：去掉注释继续下一次循环
+        // conditionalComment = /^<!\[/
         if (conditionalComment.test(html)) {
           const conditionalEnd = html.indexOf(']>')
 
@@ -112,7 +121,8 @@ export function parseHTML (html, options) {
         }
 
         // Doctype:
-        // html 以 Doctype 开头，去掉 Doctype 继续下一次循环
+        // html 以 Doctype 开头：去掉 Doctype 继续下一次循环
+        // doctype = /^<!DOCTYPE [^>]+>/i
         const doctypeMatch = html.match(doctype)
         if (doctypeMatch) {
           advance(doctypeMatch[0].length)
@@ -120,7 +130,7 @@ export function parseHTML (html, options) {
         }
 
         // End tag:
-        // html 以结束标签开头，去掉结束标签继续下一次循环，并处理结束标签
+        // html 以结束标签开头：去掉结束标签继续下一次循环，并处理结束标签
         const endTagMatch = html.match(endTag)
         if (endTagMatch) {
           const curIndex = index
@@ -130,6 +140,7 @@ export function parseHTML (html, options) {
         }
 
         // Start tag:
+        // html 以开始标签开头：
         const startTagMatch = parseStartTag()
         if (startTagMatch) {
           handleStartTag(startTagMatch)
@@ -140,9 +151,12 @@ export function parseHTML (html, options) {
         }
       }
 
+      // 若是不能匹配，则获取文本
       let text, rest, next
       if (textEnd >= 0) {
         rest = html.slice(textEnd)
+
+        // 查找到第一个能解析出来的 <，从 0 ~ 这个能解析出来的 < 字符之间的内容都是文本（有可能找不到能解析的 <）
         while (
           !endTag.test(rest) &&
           !startTagOpen.test(rest) &&
@@ -150,20 +164,26 @@ export function parseHTML (html, options) {
           !conditionalComment.test(rest)
         ) {
           // < in plain text, be forgiving and treat it as text
+          // 若 html 里只有一个 <
           next = rest.indexOf('<', 1)
           if (next < 0) break
+
+          // 若 html 里有至少两个 <
           textEnd += next
           rest = html.slice(textEnd)
         }
+        // 此时，textEnd 为 html 里第一个能解析出来的 < 的位置（或者最后一个不能解析的 < 的位置）
         text = html.substring(0, textEnd)
         advance(textEnd)
       }
 
+      // 若 html 里没有 <，则整个 html 都为文本
       if (textEnd < 0) {
         text = html
         html = ''
       }
 
+      // 若 text 存在，处理文本内容
       if (options.chars && text) {
         options.chars(text)
       }
@@ -192,6 +212,7 @@ export function parseHTML (html, options) {
     }
 
     if (html === last) {
+      // 若该轮循环 html 没有发生如何变化（即没有解析出任何内容），发出警告
       options.chars && options.chars(html)
       if (process.env.NODE_ENV !== 'production' && !stack.length && options.warn) {
         options.warn(`Mal-formatted tag at end of template: "${html}"`)
@@ -203,6 +224,9 @@ export function parseHTML (html, options) {
   // Clean up any remaining tags
   parseEndTag()
 
+  /**
+   * 截取 html 模板，并设置当前 html 模板的开始位置位于最初 html 模板里的位置
+   */
   function advance (n) {
     index += n
     html = html.substring(n)
@@ -261,6 +285,7 @@ export function parseHTML (html, options) {
 
     if (expectHTML) {
       if (lastTag === 'p' && isNonPhrasingTag(tagName)) {
+        // 先结束解析上一个 p 标签
         parseEndTag(lastTag)
       }
       if (canBeLeftOpenTag(tagName) && lastTag === tagName) {
@@ -272,7 +297,7 @@ export function parseHTML (html, options) {
 
     const l = match.attrs.length
     const attrs = new Array(l)
-    // 处理特性的 name 和 value
+    // 处理特性，将特性对象 { name, value } 推入 attrs
     for (let i = 0; i < l; i++) {
       const args = match.attrs[i]
       // hackish work around FF bug https://bugzilla.mozilla.org/show_bug.cgi?id=369778
@@ -303,7 +328,7 @@ export function parseHTML (html, options) {
   }
 
   /**
-   * 解析结束标签
+   * 解析结束标签：若堆栈里有没闭合的标签，发出警告；针对 br 和 p 标签做一异常处理
    * @param {*} tagName 结束标签名
    * @param {*} start 结束标签的开始位置（即 </xxx> 的 < 的位置）
    * @param {*} end 结束标签的结束位置（即 </xxx> 的 > 的下一位置）
@@ -351,11 +376,12 @@ export function parseHTML (html, options) {
       stack.length = pos
       lastTag = pos && stack[pos - 1].tag
     } else if (lowerCasedTagName === 'br') {
+      // 没找到对应的开始标签 && </br>：将 </br> 转换成 <br>
       if (options.start) {
         options.start(tagName, [], true, start, end)
       }
     } else if (lowerCasedTagName === 'p') {
-      // 手动添加开始标签
+      // 没找到对应的开始标签 && </p>：添加开始标签
       if (options.start) {
         options.start(tagName, [], false, start, end)
       }
