@@ -145,6 +145,7 @@ export function parseHTML (html, options) {
         if (startTagMatch) {
           handleStartTag(startTagMatch)
           if (shouldIgnoreFirstNewline(lastTag, html)) {
+            // pre、textarea 标签内，忽略首个 \n
             advance(1)
           }
           continue
@@ -188,6 +189,8 @@ export function parseHTML (html, options) {
         options.chars(text)
       }
     } else {
+      // lastTag 是 script,style,textarea 时，会走到这里
+      // 即，接下来处理 script,style,textarea 内的内容（包括闭合标签）
       let endTagLength = 0
       const stackedTag = lastTag.toLowerCase()
       const reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'))
@@ -199,6 +202,7 @@ export function parseHTML (html, options) {
             .replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1')
         }
         if (shouldIgnoreFirstNewline(stackedTag, text)) {
+          // pre、textarea 标签内，忽略首个 \n
           text = text.slice(1)
         }
         if (options.chars) {
@@ -208,6 +212,7 @@ export function parseHTML (html, options) {
       })
       index += html.length - rest.length
       html = rest
+      // 解析闭合标签
       parseEndTag(stackedTag, index - endTagLength, index)
     }
 
@@ -374,6 +379,8 @@ export function parseHTML (html, options) {
 
       // Remove the open elements from the stack
       stack.length = pos
+
+      // 标签闭合后，更新 lastTag
       lastTag = pos && stack[pos - 1].tag
     } else if (lowerCasedTagName === 'br') {
       // 没找到对应的开始标签 && </br>：将 </br> 转换成 <br>
