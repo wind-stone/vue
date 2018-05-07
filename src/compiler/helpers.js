@@ -44,10 +44,15 @@ export function addDirective (
   el.plain = false
 }
 
+
+/**
+ * 将事件处理器添加到 el.nativeEvents/events 对象里
+ */
 export function addHandler (
   el: ASTElement,
   name: string,
   value: string,
+  // 修饰符对象
   modifiers: ?ASTModifiers,
   important?: boolean,
   warn?: Function
@@ -67,10 +72,12 @@ export function addHandler (
 
   // check capture modifier
   if (modifiers.capture) {
+    // 事件是在捕获阶段触发
     delete modifiers.capture
     name = '!' + name // mark the event as captured
   }
   if (modifiers.once) {
+    // 事件只触发一次
     delete modifiers.once
     name = '~' + name // mark the event as once
   }

@@ -333,7 +333,7 @@ export function parseHTML (html, options) {
   }
 
   /**
-   * 解析结束标签：若堆栈里有没闭合的标签，发出警告；针对 br 和 p 标签做一异常处理
+   * 解析结束标签：若堆栈里有没闭合的标签，发出警告；针对 br 和 p 标签做一些异常处理
    * @param {*} tagName 结束标签名
    * @param {*} start 结束标签的开始位置（即 </xxx> 的 < 的位置）
    * @param {*} end 结束标签的结束位置（即 </xxx> 的 > 的下一位置）

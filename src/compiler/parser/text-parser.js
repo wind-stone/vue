@@ -60,6 +60,7 @@ export function parseText (
 ): TextParseResult | void {
   const tagRE = delimiters ? buildRegex(delimiters) : defaultTagRE
   if (!tagRE.test(text)) {
+    // 若没有插值需要处理，直接返回
     return
   }
   const tokens = []

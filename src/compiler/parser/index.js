@@ -120,7 +120,7 @@ export function parse (
     shouldKeepComment: options.comments,
 
     /**
-     * 解析出 html 里的元素后，创建 AST 元素
+     * 处理开始标签：创建 AST 元素，处理指令、事件、特性等等，最后压入栈中
      * @param {String} tag 元素的标签名
      * @param {Array} attrs 特性对象数组
      * @param {Boolean} unary 是否是一元标签
@@ -169,6 +169,7 @@ export function parse (
         inPre = true
       }
       if (inVPre) {
+        // 若元素有 v-pre 指令，则处理原生的特性
         processRawAttrs(element)
       } else if (!element.processed) {
         // structural directives
@@ -238,6 +239,9 @@ export function parse (
       }
     },
 
+    /**
+     * 处理关闭标签：元素出栈，再做一些清理工作
+     */
     end () {
       // remove trailing whitespace
       const element = stack[stack.length - 1]
@@ -251,6 +255,9 @@ export function parse (
       closeElement(element)
     },
 
+    /**
+     * 处理文本内容
+     */
     chars (text: string) {
       if (!currentParent) {
         if (process.env.NODE_ENV !== 'production') {
@@ -275,6 +282,7 @@ export function parse (
         return
       }
       const children = currentParent.children
+      // 若是 script、style 里的文本，则不需要对做 html 解码；否则，解码
       text = inPre || text.trim()
         ? isTextTag(currentParent) ? text : decodeHTMLCached(text)
         // only preserve whitespace if its not right after a starting tag
@@ -283,6 +291,7 @@ export function parse (
         let res
         if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
           children.push({
+            // 文本节点
             type: 2,
             expression: res.expression,
             tokens: res.tokens,
@@ -298,6 +307,7 @@ export function parse (
     },
     comment (text: string) {
       currentParent.children.push({
+        // 注释节点
         type: 3,
         text,
         isComment: true
@@ -518,6 +528,8 @@ export function addIfCondition (el: ASTElement, condition: ASTIfCondition) {
 
 /**
  * 处理 v-once 特性
+ *
+ * 只渲染元素和组件一次。随后的重新渲染，元素/组件及其所有的子节点将被视为静态内容并跳过
  */
 function processOnce (el) {
   const once = getAndRemoveAttr(el, 'v-once')
@@ -544,6 +556,11 @@ function processSlot (el) {
     // （父组件模板内，定义的子组件<child></child>里）要分发的内容
     let slotScope
     if (el.tag === 'template') {
+      // 示例：
+      // <template slot-scope="props">
+      //   <span>hello from parent</span>
+      //   <span>{{ props.text }}</span>
+      // </template>
       slotScope = getAndRemoveAttr(el, 'scope')
       /* istanbul ignore if */
       if (process.env.NODE_ENV !== 'production' && slotScope) {
@@ -582,6 +599,10 @@ function processSlot (el) {
   }
 }
 
+
+/**
+ * 处理组件标签里的 动态组件 和 内联模板
+ */
 function processComponent (el) {
   let binding
   if ((binding = getBindingAttr(el, 'is'))) {
@@ -647,6 +668,7 @@ function processAttrs (el) {
           addAttr(el, name, value)
         }
       } else if (onRE.test(name)) { // v-on
+        // onRE = /^@|^v-on:/
         name = name.replace(onRE, '')
         addHandler(el, name, value, modifiers, false, warn)
       } else { // normal directives

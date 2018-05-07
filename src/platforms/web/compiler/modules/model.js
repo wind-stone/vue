@@ -24,7 +24,7 @@ import {
 } from 'compiler/parser/index'
 
 /**
- * 预处理 AST input 元素上具有的 v-model 指令并且 type 是动态绑定的情况
+ * 预处理 AST input 元素上具有 v-model 指令并且 type 是动态绑定的情况
  */
 function preTransformNode (el: ASTElement, options: CompilerOptions) {
   if (el.tag === 'input') {
