@@ -291,7 +291,7 @@ export function parse (
         let res
         if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
           children.push({
-            // 文本节点
+            // 带有表达式的文本
             type: 2,
             expression: res.expression,
             tokens: res.tokens,
@@ -299,6 +299,7 @@ export function parse (
           })
         } else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
           children.push({
+            // 静态文本节点
             type: 3,
             text
           })
@@ -307,7 +308,7 @@ export function parse (
     },
     comment (text: string) {
       currentParent.children.push({
-        // 注释节点
+        // 静态文本节点，且是注释
         type: 3,
         text,
         isComment: true
