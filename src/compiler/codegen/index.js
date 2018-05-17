@@ -42,6 +42,7 @@ export function generate (
   options: CompilerOptions
 ): CodegenResult {
   const state = new CodegenState(options)
+  // _c: createElement
   const code = ast ? genElement(ast, state) : '_c("div")'
   return {
     render: `with(this){return ${code}}`,
@@ -49,8 +50,10 @@ export function generate (
   }
 }
 
+
 export function genElement (el: ASTElement, state: CodegenState): string {
   if (el.staticRoot && !el.staticProcessed) {
+    // el 是静态根节点 && 没经过 genStatic 处理
     return genStatic(el, state)
   } else if (el.once && !el.onceProcessed) {
     return genOnce(el, state)
@@ -66,6 +69,7 @@ export function genElement (el: ASTElement, state: CodegenState): string {
     // component or element
     let code
     if (el.component) {
+      // 动态组件
       code = genComponent(el.component, el, state)
     } else {
       const data = el.plain ? undefined : genData(el, state)
@@ -86,6 +90,13 @@ export function genElement (el: ASTElement, state: CodegenState): string {
 }
 
 // hoist static sub-trees out
+
+/**
+ * 生成静态节点的 code
+ *
+ * 实际上在 render 函数执行时，会调用 staticRenderFns 存储的 code 片段，其中会再次调用 genElement
+ * 但是那时 el.staticProcessed 为 true，就不会走 genStatic，而是在 genElement 里继续往下
+ */
 function genStatic (el: ASTElement, state: CodegenState): string {
   el.staticProcessed = true
   state.staticRenderFns.push(`with(this){return ${genElement(el, state)}}`)
@@ -97,6 +108,9 @@ function genStatic (el: ASTElement, state: CodegenState): string {
 }
 
 // v-once
+/**
+ * 生成 v-once 节点的 code
+ */
 function genOnce (el: ASTElement, state: CodegenState): string {
   el.onceProcessed = true
   if (el.if && !el.ifProcessed) {
@@ -117,6 +131,7 @@ function genOnce (el: ASTElement, state: CodegenState): string {
       )
       return genElement(el, state)
     }
+    // 生成 Vnode 节点后，标记为静态节点
     return `_o(${genElement(el, state)},${state.onceId++},${key})`
   } else {
     return genStatic(el, state)
@@ -140,6 +155,7 @@ function genIfConditions (
   altEmpty?: string
 ): string {
   if (!conditions.length) {
+    // _e: createEmptyVNode
     return altEmpty || '_e()'
   }
 
@@ -196,11 +212,18 @@ export function genFor (
     '})'
 }
 
+/**
+ * 生成 createElement(name, data, children) 中的 data 数据
+ *
+ * 返回 data 对象
+ */
 export function genData (el: ASTElement, state: CodegenState): string {
   let data = '{'
 
   // directives first.
   // directives may mutate the el's other properties before they are generated.
+
+  // 生成 directives 数据
   const dirs = genDirectives(el, state)
   if (dirs) data += dirs + ','
 
@@ -280,6 +303,11 @@ export function genData (el: ASTElement, state: CodegenState): string {
   return data
 }
 
+/**
+ * 生成 data 里 directives 数据
+ *
+ * el.directive 的数据结构为：[{ name, rawName, value, arg, modifiers }]
+ */
 function genDirectives (el: ASTElement, state: CodegenState): string | void {
   const dirs = el.directives
   if (!dirs) return
@@ -293,6 +321,10 @@ function genDirectives (el: ASTElement, state: CodegenState): string | void {
     if (gen) {
       // compile-time directive that manipulates AST.
       // returns true if it also needs a runtime counterpart.
+
+      // 额外处理 v-on/v-bind/v-cloak 指令，不放置在 data.directives 里
+      // 将 v-on 指令的数据放在 data.on 上
+      // 将 v-bind 指令的数据放在 data.domProps 或 data.attrs 或 data 或 data.on（双向绑定） 上
       needRuntime = !!gen(el, dir, state.warn)
     }
     if (needRuntime) {
@@ -472,6 +504,9 @@ function genSlot (el: ASTElement, state: CodegenState): string {
 }
 
 // componentName is el.component, take it as argument to shun flow's pessimistic refinement
+/**
+ * 生成动态组件的 code
+ */
 function genComponent (
   componentName: string,
   el: ASTElement,

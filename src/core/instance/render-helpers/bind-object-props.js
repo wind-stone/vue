@@ -11,6 +11,9 @@ import {
 
 /**
  * Runtime helper for merging v-bind="object" into a VNode's data.
+ *
+ * 代码运行时，将 v-bind 指令的数据放在 data.domProps 或 data.attrs 或 data 或 data.on（双向绑定） 上
+ * 具体挂在哪个对象上，根据传入的 asProp 和 isSync 参数判断
  */
 export function bindObjectProps (
   data: any,
