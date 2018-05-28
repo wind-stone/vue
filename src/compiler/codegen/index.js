@@ -50,7 +50,9 @@ export function generate (
   }
 }
 
-
+/**
+ * 生成 vnode 节点
+ */
 export function genElement (el: ASTElement, state: CodegenState): string {
   if (el.staticRoot && !el.staticProcessed) {
     // el 是静态根节点 && 没经过 genStatic 处理
@@ -247,6 +249,7 @@ export function genData (el: ASTElement, state: CodegenState): string {
     data += `tag:"${el.tag}",`
   }
   // module data generation functions
+  // 添加 style/staticStyle、class/staticClass 等
   for (let i = 0; i < state.dataGenFns.length; i++) {
     data += state.dataGenFns[i](el)
   }
@@ -267,10 +270,12 @@ export function genData (el: ASTElement, state: CodegenState): string {
   }
   // slot target
   // only for non-scoped slots
+  // 普通插槽
   if (el.slotTarget && !el.slotScope) {
     data += `slot:${el.slotTarget},`
   }
   // scoped slots
+  // 该元素拥有的所有的作用域插槽（带模板内容）
   if (el.scopedSlots) {
     data += `${genScopedSlots(el.scopedSlots, state)},`
   }
@@ -294,10 +299,14 @@ export function genData (el: ASTElement, state: CodegenState): string {
   data = data.replace(/,$/, '') + '}'
   // v-bind data wrap
   if (el.wrapData) {
+    // 将 data 封装一层，封装的逻辑里会处理 v-bind 的数据，最终返回 data 对象
+    // (将 v-bind 指令的数据放在 data.domProps 或 data.attrs 或 data 或 data.on（双向绑定） 上)
     data = el.wrapData(data)
   }
   // v-on data wrap
   if (el.wrapListeners) {
+    // 将 data 封装一层，封装的逻辑里会处理 v-on 的数据，最终返回 data 对象
+    // (将 v-on 指令里指令名称和回调放到 data.on 上)
     data = el.wrapListeners(data)
   }
   return data
@@ -305,6 +314,7 @@ export function genData (el: ASTElement, state: CodegenState): string {
 
 /**
  * 生成 data 里 directives 数据
+ * (额外处理 v-on/v-bind/v-cloak 指令，不放置在 data.directives 里)
  *
  * el.directive 的数据结构为：[{ name, rawName, value, arg, modifiers }]
  */
@@ -371,6 +381,12 @@ function genScopedSlots (
   }])`
 }
 
+/**
+ * 获取 scoped slot 模板函数，最终 data.scopedSlots 的数据结构是 { key: fn, ... }
+ * @param {*} key slot 的名称
+ * @param {*} el 分发内容的元素
+ * @param {*} state
+ */
 function genScopedSlot (
   key: string,
   el: ASTElement,
@@ -379,6 +395,7 @@ function genScopedSlot (
   if (el.for && !el.forProcessed) {
     return genForScopedSlot(key, el, state)
   }
+  // 生成分发内容模板
   const fn = `function(${String(el.slotScope)}){` +
     `return ${el.tag === 'template'
       ? el.if
@@ -485,8 +502,14 @@ export function genComment (comment: ASTText): string {
   return `_e(${JSON.stringify(comment.text)})`
 }
 
+/**
+ * 生成 slot 标签的内容（针对 el.tag 为 slot 的标签）
+ *
+ * 最终拼装成 _t(slotName, children, attrs对象, bind对象)
+ */
 function genSlot (el: ASTElement, state: CodegenState): string {
   const slotName = el.slotName || '"default"'
+  // children 是 slot 标签内的节点，若该 slot 没有分发内容，则显示默认内容即 children
   const children = genChildren(el, state)
   let res = `_t(${slotName}${children ? `,${children}` : ''}`
   const attrs = el.attrs && `{${el.attrs.map(a => `${camelize(a.name)}:${a.value}`).join(',')}}`

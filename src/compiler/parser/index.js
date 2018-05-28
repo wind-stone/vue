@@ -222,6 +222,7 @@ export function parse (
         if (element.elseif || element.else) {
           processIfConditions(element, currentParent)
         } else if (element.slotScope) { // scoped slot
+          // 将作用域插槽放入父元素的 scopedSlots 里，而不是作为父元素的 child
           currentParent.plain = false
           const name = element.slotTarget || '"default"'
           ;(currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
@@ -540,11 +541,16 @@ function processOnce (el) {
 }
 
 /**
- * 处理 slot
+ * 处理 slot 相关，分为两类：
+ * 1. slot 标签（子组件里的 slot 标签，会将父组件对应的 slot 内容渲染出来）
+ *   - 最终增加 el.slotName 属性
+ * 2. 元素的 slot 特性，包括 slot、scope/slot-scope（父组件内使用子组件时传入的内容）
+ *   - 最终增加 el.slotTarget 属性，对应的元素 slot 特性的值
+ *   - （可选的）增加 el.slotScope 属性，表明这个是作用域插槽
  */
 function processSlot (el) {
   if (el.tag === 'slot') {
-    // （子组件模板内）slot 元素
+    // （子组件模板内）slot 标签
     el.slotName = getBindingAttr(el, 'name')
     if (process.env.NODE_ENV !== 'production' && el.key) {
       warn(
@@ -556,6 +562,8 @@ function processSlot (el) {
   } else {
     // （父组件模板内，定义的子组件<child></child>里）要分发的内容
     let slotScope
+
+    // 处理 scoped slot
     if (el.tag === 'template') {
       // 示例：
       // <template slot-scope="props">
@@ -586,7 +594,7 @@ function processSlot (el) {
       }
       el.slotScope = slotScope
     }
-    // 要将内容分发到的 slot 的名称
+    // 分发内容对应的 slot 名称
     const slotTarget = getBindingAttr(el, 'slot')
     if (slotTarget) {
       el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget
