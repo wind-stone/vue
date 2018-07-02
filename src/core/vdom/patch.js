@@ -401,6 +401,14 @@ export function createPatchFunction (backend) {
 
   function invokeCreateHooks (vnode, insertedVnodeQueue) {
     for (let i = 0; i < cbs.create.length; ++i) {
+      // 调用元素的 create 钩子，包括
+      // - 注册 ref
+      // - 注册 directives
+      // - 添加 class 特性
+      // - 添加 style 属性
+      // - 添加其他 attrs 特性
+      // - 添加 dom-props，如 textContent/innerHTML/value 等
+      // - （待补充）
       cbs.create[i](emptyNode, vnode)
     }
     i = vnode.data.hook // Reuse variable

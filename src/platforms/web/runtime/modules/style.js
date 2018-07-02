@@ -5,6 +5,14 @@ import { cached, camelize, extend, isDef, isUndef } from 'shared/util'
 
 const cssVarRE = /^--/
 const importantRE = /\s*!important$/
+
+/**
+ * 设置 el.style
+ *
+ * @param {*} el 元素
+ * @param {*} name css 属性名
+ * @param {*} val css 属性值
+ */
 const setProp = (el, name, val) => {
   /* istanbul ignore if */
   if (cssVarRE.test(name)) {
@@ -44,6 +52,11 @@ const normalize = cached(function (prop) {
   }
 })
 
+/**
+ * 更新元素的 style 特性
+ * @param {*} oldVnode 上一次的 vnode 节点
+ * @param {*} vnode 此次更新的 vnode 节点
+ */
 function updateStyle (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const data = vnode.data
   const oldData = oldVnode.data
@@ -62,6 +75,7 @@ function updateStyle (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   // if static style exists, stylebinding already merged into it when doing normalizeStyleData
   const oldStyle = oldStaticStyle || oldStyleBinding
 
+  // 将 vnode.data.style 规范化成 对象
   const style = normalizeStyleBinding(vnode.data.style) || {}
 
   // store normalized style under a different key for next diff

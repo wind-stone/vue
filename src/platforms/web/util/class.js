@@ -2,16 +2,23 @@
 
 import { isDef, isObject } from 'shared/util'
 
+/**
+ * 生成元素最终的 class 字符串
+ *
+ * @param {VNode} vnode 虚拟节点
+ */
 export function genClassForVnode (vnode: VNodeWithData): string {
   let data = vnode.data
   let parentNode = vnode
   let childNode = vnode
+  // 若该 Vnode 节点是组件 Vnode 节点（占位节点），则需要合并该节点和组件实例根元素的 class
   while (isDef(childNode.componentInstance)) {
     childNode = childNode.componentInstance._vnode
     if (childNode && childNode.data) {
       data = mergeClassData(childNode.data, data)
     }
   }
+  // 若 Vnode 节点存在父组件，则需要合并该节点和父组件 Vnode 节点的 class
   while (isDef(parentNode = parentNode.parent)) {
     if (parentNode && parentNode.data) {
       data = mergeClassData(data, parentNode.data)
