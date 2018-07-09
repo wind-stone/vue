@@ -291,8 +291,7 @@ export function createPatchFunction (backend) {
       // 是否是重新激活的节点（keep-alive 的组件 activated 了）
       const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
       if (isDef(i = i.hook) && isDef(i = i.init)) {
-        // 创建组件实例
-        i(vnode, false /* hydrating */, parentElm, refElm)
+        i(vnode, false /* hydrating */)
       }
       // after calling the init hook, if the vnode is a child component
       // it should've created a child instance and mounted it. the child
@@ -300,6 +299,7 @@ export function createPatchFunction (backend) {
       // in that case we can just return the element and be done.
       if (isDef(vnode.componentInstance)) {
         initComponent(vnode, insertedVnodeQueue)
+        insert(parentElm, vnode.elm, refElm)
         if (isTrue(isReactivated)) {
           reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm)
         }
@@ -840,7 +840,6 @@ export function createPatchFunction (backend) {
     }
   }
 
-
   /**
    * 执行`patch`函数，是为了将根实例/组件生成的 VNode Tree 转变成 DOM Tree，最后插入到文档内。在此过程中，会新增 DOM 元素、修补（patch）DOM 元素、删除 DOM 元素。
 
@@ -849,7 +848,7 @@ export function createPatchFunction (backend) {
    * - 组件发生改变时，每次都会调用`patch`，会根据改变前后的 VNode Tree 修改 DOM Tree，该过程可能会新增 DOM 元素、修补（patch）DOM 元素、删除 DOM 元素。
    * - 组件销毁时，最后一次调用`patch`，会销毁 DOM Tree。
    */
-  return function patch (oldVnode, vnode, hydrating, removeOnly, parentElm, refElm) {
+  return function patch (oldVnode, vnode, hydrating, removeOnly) {
     if (isUndef(vnode)) {
       // 销毁 vnode 节点
       // 组件调用 Vue.prototype.$destroy 时，会调用 vm.__patch__(vm._vnode, null) 销毁 vnode 节点
@@ -865,7 +864,7 @@ export function createPatchFunction (backend) {
 
       // 生成子组件的 DOM Tree（子组件实例首次 patch，oldVnode 为 undefined）
       isInitialPatch = true
-      createElm(vnode, insertedVnodeQueue, parentElm, refElm)
+      createElm(vnode, insertedVnodeQueue)
     } else {
       // 根组件实例首次 patch，oldVnode 为要挂载到的 DOM 元素
       const isRealElement = isDef(oldVnode.nodeType)

@@ -100,10 +100,6 @@ export function initInternalComponent (vm: Component, options: InternalComponent
   opts.parent = options.parent
   // opts._parentVnode：组件实例对应的 vnode 的父 vnode
   opts._parentVnode = parentVnode
-  // opts._parentElm：组件实例最终要挂载到的 DOM 节点
-  opts._parentElm = options._parentElm
-  // opts._refElm：挂载到 opts._parentElm 下面时，如果 opts._refElm 存在，则挂载到 opts._refElm 之前
-  opts._refElm = options._refElm
 
   const vnodeComponentOptions = parentVnode.componentOptions
   // 组件实例的 opts 要挂载 parentVnode 上的 propsData、listeners、children

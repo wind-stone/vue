@@ -2,7 +2,7 @@
 
 import config from '../config'
 import Watcher from '../observer/watcher'
-import Dep, { pushTarget, popTarget } from '../observer/dep'
+import { pushTarget, popTarget } from '../observer/dep'
 import { isUpdatingChildComponent } from './lifecycle'
 
 import {
@@ -185,7 +185,6 @@ export function getData (data: Function, vm: Component): any {
   }
 }
 
-
 /**
  * 创建 Vue 实例/组件实例时，需要对`computed`计算属性做出处理，包括：
  * - 针对`computed`计算属性里的每个`key`，创建一个内部`watcher`
@@ -201,7 +200,7 @@ export function getData (data: Function, vm: Component): any {
  *     - 因此，每次 C、D 改变不会导致计算属性 B 的值改变（这就是为什么计算属性是 lazy 的），但是会通知 A 进行重新计算
  *     - 如果是通过`Vue.extend(options)`扩展而来的构造函数如`SubVue`，如果`options`里有`computed`选项，则这些计算属性的访问将通过`SubVue.prototype`访问，仅有组件独有的计算属性是通过`vm`直接访问的。`props`也是如此，详情请参考`Vue.extend`的实现及`initProps`的分析文档。
  */
-const computedWatcherOptions = { lazy: true }
+const computedWatcherOptions = { computed: true }
 
 function initComputed (vm: Component, computed: Object) {
   // $flow-disable-line
@@ -283,16 +282,8 @@ function createComputedGetter (key) {
   return function computedGetter () {
     const watcher = this._computedWatchers && this._computedWatchers[key]
     if (watcher) {
-      if (watcher.dirty) {
-        // 计算属性只有在它的相关依赖发生改变时才会重新求值
-        // （因为初始化 watcher 时将 dirty 置为 true，因此首次获取计算属性的值也会进行求值）
-        watcher.evaluate()
-      }
-      if (Dep.target) {
-        // 假设 A 依赖了当前的计算属性 B，而当前的计算属性 B 依赖了 C、D，这里则是将 C、D 添加为 A 的依赖
-        watcher.depend()
-      }
-      return watcher.value
+      watcher.depend()
+      return watcher.evaluate()
     }
   }
 }

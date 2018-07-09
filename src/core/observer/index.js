@@ -156,10 +156,10 @@ export function defineReactive (
 
   // cater for pre-defined getter/setters
   const getter = property && property.get
-  if (!getter && arguments.length === 2) {
+  const setter = property && property.set
+  if ((!getter || setter) && arguments.length === 2) {
     val = obj[key]
   }
-  const setter = property && property.set
 
   // 递归地对 val 进行响应式处理，并返回 val 对应的 __ob__
   let childOb = !shallow && observe(val)

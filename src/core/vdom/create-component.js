@@ -50,16 +50,7 @@ import {
 
 // inline hooks to be invoked on component VNodes during patch
 const componentVNodeHooks = {
-  /**
-   * patch 过程中，若是创建的是子组件，则调用该 init 钩子，
-   * 创建子组件的实例（及其所有的子元素、子组件），并挂载到父元素上
-   */
-  init (
-    vnode: VNodeWithData,
-    hydrating: boolean,
-    parentElm: ?Node,
-    refElm: ?Node
-  ): ?boolean {
+  init (vnode: VNodeWithData, hydrating: boolean): ?boolean {
     if (
       vnode.componentInstance &&
       !vnode.componentInstance._isDestroyed &&
@@ -71,9 +62,7 @@ const componentVNodeHooks = {
     } else {
       const child = vnode.componentInstance = createComponentInstanceForVnode(
         vnode,
-        activeInstance,
-        parentElm,
-        refElm
+        activeInstance
       )
       child.$mount(hydrating ? vnode.elm : undefined, hydrating)
     }
@@ -265,19 +254,11 @@ export function createComponent (
 export function createComponentInstanceForVnode (
   vnode: any, // we know it's MountedComponentVNode but flow doesn't
   parent: any, // activeInstance in lifecycle state
-  parentElm?: ?Node,
-  refElm?: ?Node
 ): Component {
   const options: InternalComponentOptions = {
     _isComponent: true,
-    // 活动的 Vue 实例
-    parent,
-    // 组件实例对应的 vnode，其 tag 为 vue-component-${Ctor.cid}${name}`
     _parentVnode: vnode,
-    // 组件实例要插入到的父 DOM 元素
-    _parentElm: parentElm || null,
-    // 组件实例将插入到该元素之前
-    _refElm: refElm || null
+    parent
   }
   // check inline-template render functions
   const inlineTemplate = vnode.data.inlineTemplate
@@ -292,8 +273,22 @@ function installComponentHooks (data: VNodeData) {
   const hooks = data.hook || (data.hook = {})
   for (let i = 0; i < hooksToMerge.length; i++) {
     const key = hooksToMerge[i]
-    hooks[key] = componentVNodeHooks[key]
+    const existing = hooks[key]
+    const toMerge = componentVNodeHooks[key]
+    if (existing !== toMerge && !(existing && existing._merged)) {
+      hooks[key] = existing ? mergeHook(toMerge, existing) : toMerge
+    }
   }
+}
+
+function mergeHook (f1: any, f2: any): Function {
+  const merged = (a, b) => {
+    // flow complains about extra args which is why we use any
+    f1(a, b)
+    f2(a, b)
+  }
+  merged._merged = true
+  return merged
 }
 
 // transform component v-model info (value and callback) into
