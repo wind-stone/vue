@@ -12,12 +12,14 @@ let builds = require('./config').getAllBuilds()
 
 // filter builds via command line arg
 if (process.argv[2]) {
+  // 若是 npm run build:ssr 或者 npm run build:weex，则只构建特定版本，其他的版本过滤掉
   const filters = process.argv[2].split(',')
   builds = builds.filter(b => {
     return filters.some(f => b.output.file.indexOf(f) > -1 || b._name.indexOf(f) > -1)
   })
 } else {
   // filter out weex builds by default
+  // 默认过滤 weex 相关的构建
   builds = builds.filter(b => {
     return b.output.file.indexOf('weex') === -1
   })
@@ -40,6 +42,10 @@ function build (builds) {
   next()
 }
 
+/**
+ * 构建 entry 文件
+ * @param {*} config 构建配置
+ */
 function buildEntry (config) {
   const output = config.output
   const { file, banner } = output

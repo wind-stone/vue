@@ -42,11 +42,17 @@ export function FunctionalRenderContext (
   const isCompiled = isTrue(options._compiled)
   const needNormalization = !isCompiled
 
+  // 传递给组件的数据对象，作为 createElement 的第二个参数传入组件
   this.data = data
+  // 提供所有 prop 的对象
   this.props = props
+  // VNode 子节点的数组
   this.children = children
+  // 对父组件的引用
   this.parent = parent
+  //  (2.3.0+) 一个包含了所有在父组件上注册的事件侦听器的对象。这只是一个指向 data.on 的别名。
   this.listeners = data.on || emptyObject
+  // (2.3.0+) 如果使用了 inject 选项，则该对象包含了应当被注入的属性。
   this.injections = resolveInject(options.inject, parent)
   this.slots = () => resolveSlots(children, parent)
 
@@ -87,13 +93,17 @@ export function createFunctionalComponent (
   const propOptions = options.props
   if (isDef(propOptions)) {
     for (const key in propOptions) {
+      // 校验 props 的有效性并返回其值
       props[key] = validateProp(key, propOptions, propsData || emptyObject)
     }
   } else {
+    // 将 data.attrs/props 的数据都合并到 props 里
+    // 这也就是说，可以省略 props 选项，所有组件上的特性都会被自动解析为 props。
     if (isDef(data.attrs)) mergeProps(props, data.attrs)
     if (isDef(data.props)) mergeProps(props, data.props)
   }
 
+  // 创建函数式组件的上下文对象
   const renderContext = new FunctionalRenderContext(
     data,
     props,

@@ -1,8 +1,21 @@
 /* @flow */
 
+/**
+ * 更新 listeners，添加新增的 listener，删除无用的 listener
+ */
+
 import { warn } from 'core/util/index'
 import { cached, isUndef, isPlainObject } from 'shared/util'
 
+/**
+ * 标准化事件名称，返回一个对象，包含:
+ *   文件名
+ *   是否监听一次
+ *   是否采取捕获模式
+ *   是否 passive
+ *
+ * PS: 在模板编译阶段，会将事件的修饰符变成对应的符号添加在事件名称之前，这里是从事件名称里解析出各个修饰符
+ */
 const normalizeEvent = cached((name: string): {
   name: string,
   once: boolean,
@@ -25,6 +38,11 @@ const normalizeEvent = cached((name: string): {
   }
 })
 
+/**
+ * 封装 fns 函数，返回新的函数 invoker，将原始的 fns 挂载在 invoker.fns 上
+ *
+ * 封装的目的是，fns 参数可以传入函数数组，即同时添加多个监听器
+ */
 export function createFnInvoker (fns: Function | Array<Function>): Function {
   function invoker () {
     const fns = invoker.fns
@@ -42,6 +60,15 @@ export function createFnInvoker (fns: Function | Array<Function>): Function {
   return invoker
 }
 
+/**
+ * 更新 listeners
+ *
+ * 1、新的 listener 不存在：报错
+ * 2、新的 listener 存在 && 旧的 listener 不存在：调用 createFnInvoker 生成新的 listener 并添加到 vm 上
+ * 3、新的 listener 存在 && 旧的 listener 存在 && 新旧 listener 不相等：新的替换掉旧的
+ *
+ * 注意：通过调用 createFnInvoker 标准化 listener ，最终调用 listener 时，实际上是调用 listener.fns 上个每个函数（fns 可能是单个函数，也可能是数组）
+ */
 export function updateListeners (
   on: Object,
   oldOn: Object,
@@ -74,6 +101,7 @@ export function updateListeners (
       on[name] = old
     }
   }
+  // 去除 oldListeners 有但新 listeners 里没有的事件
   for (name in oldOn) {
     if (isUndef(on[name])) {
       event = normalizeEvent(name)

@@ -167,6 +167,8 @@ export const capitalize = cached((str: string): string => {
 
 /**
  * Hyphenate a camelCase string.
+ *
+ * 将 cameCase 转变为 hyphen-case
  */
 const hyphenateRE = /\B([A-Z])/g
 export const hyphenate = cached((str: string): string => {
@@ -229,6 +231,7 @@ export function extend (to: Object, _from: ?Object): Object {
 
 /**
  * Merge an Array of Objects into a single Object.
+ * 将对象数组合并到单个对象里
  */
 export function toObject (arr: Array<any>): Object {
   const res = {}
@@ -259,6 +262,7 @@ export const identity = (_: any) => _
 
 /**
  * Generate a static keys string from compiler modules.
+ * 从编译模块里生成静态 keys，返回类似于 'staticClass,staticStyle'
  */
 export function genStaticKeys (modules: Array<ModuleOptions>): string {
   return modules.reduce((keys, m) => {

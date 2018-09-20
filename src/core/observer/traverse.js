@@ -31,10 +31,12 @@ function _traverse (val: any, seen: SimpleSet) {
   }
   if (isA) {
     i = val.length
+    // 获取每个数组每个元素值的同时，也在让当前的 Dep.target 收集依赖
     while (i--) _traverse(val[i], seen)
   } else {
     keys = Object.keys(val)
     i = keys.length
+    // 获取对象每个 key 的 value 的同时，也在让当前的 Dep.target 收集依赖
     while (i--) _traverse(val[keys[i]], seen)
   }
 }

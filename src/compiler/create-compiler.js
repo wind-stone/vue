@@ -10,6 +10,7 @@ export function createCompilerCreator (baseCompile: Function): Function {
       template: string,
       options?: CompilerOptions
     ): CompiledResult {
+      // finalOptions.__proto__ = baseOptions
       const finalOptions = Object.create(baseOptions)
       const errors = []
       const tips = []
@@ -17,6 +18,10 @@ export function createCompilerCreator (baseCompile: Function): Function {
         (tip ? tips : errors).push(msg)
       }
 
+      // 合并 baseOptions 和传入的 options
+      // modules 是数组，合并数组
+      // directives 是对象，合并对象，options.directives 可能会覆盖 baseOptions.directives 里同名的属性
+      // 其他属性优先使用 options.xxx
       if (options) {
         // merge custom modules
         if (options.modules) {
@@ -38,6 +43,7 @@ export function createCompilerCreator (baseCompile: Function): Function {
         }
       }
 
+      // 编译
       const compiled = baseCompile(template, finalOptions)
       if (process.env.NODE_ENV !== 'production') {
         errors.push.apply(errors, detectErrors(compiled.ast))

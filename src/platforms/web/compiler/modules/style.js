@@ -8,6 +8,11 @@ import {
   baseWarn
 } from 'compiler/helpers'
 
+/**
+ * 处理 style，给 ASTElement 添加属性：
+ *   - staticStyle：静态 style 属性值
+ *   - styleBinding：动态绑定的 style 属性值
+ */
 function transformNode (el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
   const staticStyle = getAndRemoveAttr(el, 'style')

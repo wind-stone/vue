@@ -1,4 +1,10 @@
 /* @flow */
+/**
+ * 该文件主要提供`VNode`类，以及几个方法：
+ *   `createEmptyVNode`：创建空的`vnode`
+ *   `createTextVNode`：创建文本`vnode`
+ *   `cloneVNode`：复制`vnode`（可深度复制）
+ */
 
 export default class VNode {
   tag: string | void;
@@ -29,13 +35,21 @@ export default class VNode {
   fnScopeId: ?string; // functional scope id support
 
   constructor (
+    // 节点的标签
     tag?: string,
+    // 节点的数据对象
     data?: VNodeData,
+    // 节点的子节点
     children?: ?Array<VNode>,
+    // 节点的文本
     text?: string,
+    // 详见 https://windstone.cc/vue/source-study/topics/dom-binding.html#vnode-elm-%E7%9A%84%E7%A1%AE%E5%AE%9A
     elm?: Node,
+    // 组件渲染时的父上下文组件
     context?: Component,
+    // 组件的一些选项数据，比如 Ctor, propsData, listeners, tag, children
     componentOptions?: VNodeComponentOptions,
+    // 异步组件工厂函数
     asyncFactory?: Function
   ) {
     this.tag = tag
@@ -70,6 +84,9 @@ export default class VNode {
   }
 }
 
+/**
+ * 创建空的 VNode 注释节点
+ */
 export const createEmptyVNode = (text: string = '') => {
   const node = new VNode()
   node.text = text

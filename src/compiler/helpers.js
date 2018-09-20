@@ -32,6 +32,15 @@ export function addRawAttr (el: ASTElement, name: string, value: any) {
   el.attrsList.push({ name, value })
 }
 
+/**
+ * 添加指令
+ * @param {*} el 元素
+ * @param {*} name 指令名称（经过处理，去除了 v-/@/: 前缀、修饰符、参数）
+ * @param {*} rawName 指令名称（未经处理，保留了 v-/@/: 前缀、修饰符、参数）
+ * @param {*} value 指令的表达式
+ * @param {*} arg 指令的参数
+ * @param {*} modifiers 指令的修饰符
+ */
 export function addDirective (
   el: ASTElement,
   name: string,
@@ -44,10 +53,23 @@ export function addDirective (
   el.plain = false
 }
 
+/**
+ * 将事件添加到 el.nativeEvents/events 对象里
+ *
+ * @param {AST} el 元素
+ * @param {String} name 事件名称，已去除 v-on/@ 和修饰符，比如 click
+ * @param {String} value 事件处理方法，可以是
+ *   - 方法名，比如：handleClick
+ *   - 内联处理器中的方法，比如 handleClick('hello', $event)
+ * @param {Object} modifiers 事件的修饰符，形如 { prevent: true, native, true }
+ * @param {Boolean} important
+ * @param {Function} warn 警告函数
+ */
 export function addHandler (
   el: ASTElement,
   name: string,
   value: string,
+  // 修饰符对象
   modifiers: ?ASTModifiers,
   important?: boolean,
   warn?: Function
@@ -67,10 +89,12 @@ export function addHandler (
 
   // check capture modifier
   if (modifiers.capture) {
+    // 事件是在捕获阶段触发
     delete modifiers.capture
     name = '!' + name // mark the event as captured
   }
   if (modifiers.once) {
+    // 事件只触发一次
     delete modifiers.once
     name = '~' + name // mark the event as once
   }
@@ -83,6 +107,7 @@ export function addHandler (
   // normalize click.right and click.middle since they don't actually fire
   // this is technically browser-specific, but at least for now browsers are
   // the only target envs that have right/middle clicks.
+  // 标准化 click 事件
   if (name === 'click') {
     if (modifiers.right) {
       name = 'contextmenu'
@@ -94,9 +119,11 @@ export function addHandler (
 
   let events
   if (modifiers.native) {
+    // 组件节点上的原生事件
     delete modifiers.native
     events = el.nativeEvents || (el.nativeEvents = {})
   } else {
+    // DOM 元素节点上的事件、组件节点上的自定义事件
     events = el.events || (el.events = {})
   }
 
@@ -120,6 +147,9 @@ export function addHandler (
   el.plain = false
 }
 
+/**
+ * 获取 AST 元素上绑定的特性的值；若绑定值不存在，获取静态值
+ */
 export function getBindingAttr (
   el: ASTElement,
   name: string,
@@ -142,6 +172,9 @@ export function getBindingAttr (
 // doesn't get processed by processAttrs.
 // By default it does NOT remove it from the map (attrsMap) because the map is
 // needed during codegen.
+/**
+ * 获取 AST 元素上的特性的值，并从 AST 元素的 attrsList 和 attrsMap（可选）将特性删除
+ */
 export function getAndRemoveAttr (
   el: ASTElement,
   name: string,
@@ -150,6 +183,7 @@ export function getAndRemoveAttr (
   let val
   if ((val = el.attrsMap[name]) != null) {
     const list = el.attrsList
+    // 从 attrsList 里移除
     for (let i = 0, l = list.length; i < l; i++) {
       if (list[i].name === name) {
         list.splice(i, 1)
@@ -158,6 +192,7 @@ export function getAndRemoveAttr (
     }
   }
   if (removeFromMap) {
+    // 从 attrsMap 移除
     delete el.attrsMap[name]
   }
   return val

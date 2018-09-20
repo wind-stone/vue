@@ -1,4 +1,5 @@
 /* @flow */
+// 运行时 + 编译器的版本。编译器用于将模板编译成 render 函数。
 
 import config from 'core/config'
 import { warn, cached } from 'core/util/index'
@@ -15,6 +16,9 @@ const idToTemplate = cached(id => {
 })
 
 const mount = Vue.prototype.$mount
+/**
+ * 封装 Vue.prototype.$mount，将 template 编译为 render 函数
+ */
 Vue.prototype.$mount = function (
   el?: string | Element,
   hydrating?: boolean
@@ -35,6 +39,8 @@ Vue.prototype.$mount = function (
     let template = options.template
     if (template) {
       if (typeof template === 'string') {
+        // X-Template
+        // https://cn.vuejs.org/v2/guide/components-edge-cases.html#X-Templates
         if (template.charAt(0) === '#') {
           template = idToTemplate(template)
           /* istanbul ignore if */
@@ -46,6 +52,7 @@ Vue.prototype.$mount = function (
           }
         }
       } else if (template.nodeType) {
+        // template 是 DOM 元素
         template = template.innerHTML
       } else {
         if (process.env.NODE_ENV !== 'production') {
@@ -54,6 +61,7 @@ Vue.prototype.$mount = function (
         return this
       }
     } else if (el) {
+      // 若 options.template 不存在，则将挂载元素作为模板
       template = getOuterHTML(el)
     }
     if (template) {
@@ -62,10 +70,14 @@ Vue.prototype.$mount = function (
         mark('compile')
       }
 
+      // 将 template 编译成 render 函数
       const { render, staticRenderFns } = compileToFunctions(template, {
+        // 编译模板时，是否要对换行符（\n）进行解码
         shouldDecodeNewlines,
         shouldDecodeNewlinesForHref,
+        // 模板内表达式前后的分隔符，默认是 ["{{", "}}"]
         delimiters: options.delimiters,
+        // 是否保留且渲染模板中的 HTML 注释，默认为 false
         comments: options.comments
       }, this)
       options.render = render

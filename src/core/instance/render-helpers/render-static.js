@@ -2,6 +2,8 @@
 
 /**
  * Runtime helper for rendering static trees.
+ *
+ * 生成静态节点的 VNode，并将 VNode 节点缓存在 this._staticTrees 上，方便下次直接使用
  */
 export function renderStatic (
   index: number,
@@ -15,11 +17,13 @@ export function renderStatic (
     return tree
   }
   // otherwise, render a fresh tree.
+  // 渲染出 Vnode 节点
   tree = cached[index] = this.$options.staticRenderFns[index].call(
     this._renderProxy,
     null,
     this // for render fns generated for functional component templates
   )
+  // 标记该 VNode 节点是静态的
   markStatic(tree, `__static__${index}`, false)
   return tree
 }
@@ -37,6 +41,9 @@ export function markOnce (
   return tree
 }
 
+/**
+ * 将 VNode 节点 或 VNode 节点数组里的各个 VNode 标记为静态的
+ */
 function markStatic (
   tree: VNode | Array<VNode>,
   key: string,
@@ -53,6 +60,9 @@ function markStatic (
   }
 }
 
+/**
+ * 将 VNode 节点标记为静态的
+ */
 function markStaticNode (node, key, isOnce) {
   node.isStatic = true
   node.key = key

@@ -21,10 +21,17 @@ import {
 export let activeInstance: any = null
 export let isUpdatingChildComponent: boolean = false
 
+/**
+ * 初始化 lifecycle，添加 vm.$parent/$root 等初始化数据
+ */
 export function initLifecycle (vm: Component) {
   const options = vm.$options
+  // 注意：keep-alive 组件和 transition 组件是 abstract 的
 
   // locate first non-abstract parent
+
+  // 初始化组件的 $options 时，vm.$options.parent 已经指向父组件
+  // 此处将组件加入到第一个非抽象父组件的 $children 里
   let parent = options.parent
   if (parent && !options.abstract) {
     while (parent.$options.abstract && parent.$parent) {
@@ -33,7 +40,10 @@ export function initLifecycle (vm: Component) {
     parent.$children.push(vm)
   }
 
+  // 第一个非抽象父组件
   vm.$parent = parent
+
+  // 根组件
   vm.$root = parent ? parent.$root : vm
 
   vm.$children = []
@@ -48,20 +58,28 @@ export function initLifecycle (vm: Component) {
 }
 
 export function lifecycleMixin (Vue: Class<Component>) {
+  /**
+   * 该函数的主要作用是，传入新的 vnode，更新视图。
+   */
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
     const prevEl = vm.$el
     const prevVnode = vm._vnode
     const prevActiveInstance = activeInstance
+    // 将活动实例设置为 vm
     activeInstance = vm
     vm._vnode = vnode
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
     if (!prevVnode) {
       // initial render
+      // 首次渲染
+      // 根组件首次渲染时，vm.$el 为组件选项对象的 el 选项
+      // 子组件首次渲染时，vm.$el 为空
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
     } else {
       // updates
+      // 更新
       vm.$el = vm.__patch__(prevVnode, vnode)
     }
     activeInstance = prevActiveInstance
@@ -74,12 +92,24 @@ export function lifecycleMixin (Vue: Class<Component>) {
     }
     // if parent is an HOC, update its $el as well
     if (vm.$vnode && vm.$parent && vm.$vnode === vm.$parent._vnode) {
+      // vm.$vnode 是组件的占位 VNode
+      // vm.$parent 是组件渲染时当前活动的非抽象父组件
+      // vm.$vnode === vm.$parent._vnode 成立，说明组件的占位 VNode 是其非抽象父组件的渲染 VNode，即连续嵌套组件的情况
+      // 此种情况下，则更新父组件实例的 $el
       vm.$parent.$el = vm.$el
     }
     // updated hook is called by the scheduler to ensure that children are
     // updated in a parent's updated hook.
   }
 
+  /**
+   * 强制“渲染`watcher`”重新计算表达式的值、收集依赖、执行回调
+   * （“渲染`watcher`”的回调里会返回新的`vnode`并更新视图）。
+   *
+   * 需要注意，
+   *   - `beforeDestroy`钩子函数的调用顺序是：先父组件、后子组件
+   *   - `destroy`钩子函数的调用顺序是：先子组件、后父组件
+   */
   Vue.prototype.$forceUpdate = function () {
     const vm: Component = this
     if (vm._watcher) {
@@ -110,6 +140,9 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // remove reference from data ob
     // frozen object may not have observer.
     if (vm._data.__ob__) {
+      // 如果组件选项里的 data 不是函数而是对象，
+      // 会存在多个 vm 实例可能共用一个 data的情况，
+      // 因此 vm 销毁时，data.__ob__.vmCount 也要自减
       vm._data.__ob__.vmCount--
     }
     // call the last hook...
@@ -131,12 +164,21 @@ export function lifecycleMixin (Vue: Class<Component>) {
   }
 }
 
+/**
+ * 将组件挂载到元素上，创建渲染`watcher`，一旦模板里依赖的数据有更改，将更新模板。
+ *
+ * 注意：
+ *   - 只有根实例调用`vm.$mount()`方法时，才会传入`el`参数（根实例不知道父元素是哪个，需要手动传入要挂载到的元素）
+ *   - 子组件的挂载都是直接挂载在父元素上
+ */
 export function mountComponent (
   vm: Component,
   el: ?Element,
   hydrating?: boolean
 ): Component {
   vm.$el = el
+
+  // 非生产环境下，对使用 Vue.js 的运行时版本进行警告
   if (!vm.$options.render) {
     vm.$options.render = createEmptyVNode
     if (process.env.NODE_ENV !== 'production') {
@@ -162,6 +204,7 @@ export function mountComponent (
   let updateComponent
   /* istanbul ignore if */
   if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
+    // 非生产环境下，对组件生成 Vnode 和 patch 做性能追踪
     updateComponent = () => {
       const name = vm._name
       const id = vm._uid
@@ -198,6 +241,8 @@ export function mountComponent (
 
   // manually mounted instance, call mounted on self
   // mounted is called for render-created child components in its inserted hook
+  // Vue 根实例没有 $vnode 属性，需要手动调用 mounted 生命周期钩子函数
+  // （子组件会在 Vnode 的 inserted 钩子里调用 mounted 生命周期函数）
   if (vm.$vnode == null) {
     vm._isMounted = true
     callHook(vm, 'mounted')
@@ -205,6 +250,10 @@ export function mountComponent (
   return vm
 }
 
+
+/**
+ * 更新子组件实例
+ */
 export function updateChildComponent (
   vm: Component,
   propsData: ?Object,
@@ -225,21 +274,25 @@ export function updateChildComponent (
     vm.$scopedSlots !== emptyObject // has old scoped slots
   )
 
+  // 更新子组件实例指向的子组件占位 VNode
   vm.$options._parentVnode = parentVnode
   vm.$vnode = parentVnode // update vm's placeholder node without re-render
 
   if (vm._vnode) { // update child tree's parent
     vm._vnode.parent = parentVnode
   }
+  // 替换为新的 static slots
   vm.$options._renderChildren = renderChildren
 
   // update $attrs and $listeners hash
   // these are also reactive so they may trigger child update if the child
   // used them during render
+  // 更新子组件的 $attrs 和 $listeners，这两个属性也是响应式的，若是子组件视图里使用了它们，会引起子组件的重新渲染
   vm.$attrs = parentVnode.data.attrs || emptyObject
   vm.$listeners = listeners || emptyObject
 
   // update props
+  // 更新子组件的 props
   if (propsData && vm.$options.props) {
     toggleObserving(false)
     const props = vm._props
@@ -247,6 +300,7 @@ export function updateChildComponent (
     for (let i = 0; i < propKeys.length; i++) {
       const key = propKeys[i]
       const propOptions: any = vm.$options.props // wtf flow?
+      // props 是响应式的，若是子组件视图依赖某个 prop，prop 改变，会想起子组件重新渲染
       props[key] = validateProp(key, propOptions, propsData, vm)
     }
     toggleObserving(true)
@@ -261,6 +315,7 @@ export function updateChildComponent (
   updateComponentListeners(vm, listeners, oldListeners)
 
   // resolve slots + force update if has children
+  // 若是子组件存在 slot，则强制渲染该组件
   if (hasChildren) {
     vm.$slots = resolveSlots(renderChildren, parentVnode.context)
     vm.$forceUpdate()

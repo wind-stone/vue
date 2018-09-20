@@ -2,6 +2,7 @@
 
 import { makeMap } from 'shared/util'
 
+// 一元标签，比如 <br>、<br/>
 export const isUnaryTag = makeMap(
   'area,base,br,col,embed,frame,hr,img,input,isindex,keygen,' +
   'link,meta,param,source,track,wbr'
@@ -15,6 +16,7 @@ export const canBeLeftOpenTag = makeMap(
 
 // HTML5 tags https://html.spec.whatwg.org/multipage/indices.html#elements-3
 // Phrasing Content https://html.spec.whatwg.org/multipage/dom.html#phrasing-content
+// 以下这些标签元素不能出现在段落标签内
 export const isNonPhrasingTag = makeMap(
   'address,article,aside,base,blockquote,body,caption,col,colgroup,dd,' +
   'details,dialog,div,dl,dt,fieldset,figcaption,figure,footer,form,' +

@@ -168,6 +168,10 @@ const builds = {
   }
 }
 
+/**
+ * 配置 rollup 构建的配置对象
+ * @param {string} name 构建的名称
+ */
 function genConfig (name) {
   const opts = builds[name]
   const config = {

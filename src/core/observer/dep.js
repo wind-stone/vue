@@ -55,11 +55,19 @@ export default class Dep {
 Dep.target = null
 const targetStack = []
 
+/**
+ * 将传入的 watcher 设置为全局的 Dep.target，方便传入的 watcher 所依赖的 dep 将其添加到订阅列表里
+ *
+ * @param {Watcher} _target 当前正在计算表达式结果的 watcher
+ */
 export function pushTarget (_target: ?Watcher) {
   if (Dep.target) targetStack.push(Dep.target)
   Dep.target = _target
 }
 
+/**
+ * 恢复之前的 Dep.target
+ */
 export function popTarget () {
   Dep.target = targetStack.pop()
 }

@@ -12,13 +12,19 @@ export const createCompiler = createCompilerCreator(function baseCompile (
   template: string,
   options: CompilerOptions
 ): CompiledResult {
+  // 解析模板字符串，创建 AST
   const ast = parse(template.trim(), options)
+
+  // 优化 AST
   if (options.optimize !== false) {
     optimize(ast, options)
   }
+
+  // 基于 AST 生成字符串形式的`render`/`staticRenderFns`
   const code = generate(ast, options)
   return {
     ast,
+    // 字符串形式的 render/staticRenderFns
     render: code.render,
     staticRenderFns: code.staticRenderFns
   }

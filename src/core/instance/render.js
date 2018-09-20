@@ -19,6 +19,7 @@ export function initRender (vm: Component) {
   vm._vnode = null // the root of the child tree
   vm._staticTrees = null // v-once cached trees
   const options = vm.$options
+  // options._parentVnode 是子组件的组件占位 VNode，因此根组件不存在
   const parentVnode = vm.$vnode = options._parentVnode // the placeholder node in parent tree
   const renderContext = parentVnode && parentVnode.context
   vm.$slots = resolveSlots(options._renderChildren, renderContext)
@@ -27,9 +28,11 @@ export function initRender (vm: Component) {
   // so that we get proper render context inside it.
   // args order: tag, data, children, normalizationType, alwaysNormalize
   // internal version is used by render functions compiled from templates
+  // 供模板编译时使用的 createElement
   vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false)
   // normalization is always applied for the public version, used in
   // user-written render functions.
+  // 用户编写的 render 函数时使用的 createElement
   vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)
 
   // $attrs & $listeners are exposed for easier HOC creation.
@@ -58,8 +61,12 @@ export function renderMixin (Vue: Class<Component>) {
     return nextTick(fn, this)
   }
 
+  /**
+   * 调用 vm.$options.render() 生成 VNode 节点
+   */
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
+    // 若是组件实例，则会存在 _parentVnode
     const { render, _parentVnode } = vm.$options
 
     // reset _rendered flag on slots for duplicate slot check

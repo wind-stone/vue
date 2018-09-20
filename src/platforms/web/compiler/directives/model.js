@@ -11,6 +11,13 @@ let warn
 export const RANGE_TOKEN = '__r'
 export const CHECKBOX_RADIO_TOKEN = '__c'
 
+/**
+ * 生成 v-model 指令的代码
+ * @param {*} el AST 元素
+ * @param {*} dir 指令对象，结构为 { name, rawName, value, arg, modifiers }
+ * @param {*} _warn 警告函数
+ * @return {Boolena} 是否需要额外的运行时
+ */
 export default function model (
   el: ASTElement,
   dir: ASTDirective,

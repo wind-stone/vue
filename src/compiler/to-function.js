@@ -20,6 +20,7 @@ function createFunction (code, errors) {
 export function createCompileToFunctionFn (compile: Function): Function {
   const cache = Object.create(null)
 
+  // 最终的 compileToFunctions 函数，返回 { render, staticRenderFns }
   return function compileToFunctions (
     template: string,
     options?: CompilerOptions,
@@ -32,6 +33,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
     /* istanbul ignore if */
     if (process.env.NODE_ENV !== 'production') {
       // detect possible CSP restriction
+      // 检测可能存在的 CSP（Content Security Policy）限制
       try {
         new Function('return 1')
       } catch (e) {
@@ -48,6 +50,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
     }
 
     // check cache
+    // 优先使用缓存结果
     const key = options.delimiters
       ? String(options.delimiters) + template
       : template
@@ -56,9 +59,11 @@ export function createCompileToFunctionFn (compile: Function): Function {
     }
 
     // compile
+    // 编译
     const compiled = compile(template, options)
 
     // check compilation errors/tips
+    // 检测编译错误/提示
     if (process.env.NODE_ENV !== 'production') {
       if (compiled.errors && compiled.errors.length) {
         warn(
@@ -73,6 +78,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
     }
 
     // turn code into functions
+    // 将 res.render/staticRenderFns 字符串转换成函数
     const res = {}
     const fnGenErrors = []
     res.render = createFunction(compiled.render, fnGenErrors)
@@ -84,6 +90,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
     // this should only happen if there is a bug in the compiler itself.
     // mostly for codegen development use
     /* istanbul ignore if */
+    // 若基于 res.render/staticRenderFns 字符串生成 render/staticRender 函数时出错
     if (process.env.NODE_ENV !== 'production') {
       if ((!compiled.errors || !compiled.errors.length) && fnGenErrors.length) {
         warn(

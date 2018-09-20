@@ -2,6 +2,11 @@
 
 /**
  * Cross-platform code generation for component v-model
+ * 跨平台生成组件节点 v-model 指令的代码
+ *
+ * @param {*} el 组件 AST 节点
+ * @param {*} value v-model 的表达式
+ * @param {*} modifiers v-model 的修饰符对象
  */
 export function genComponentModel (
   el: ASTElement,
@@ -19,6 +24,7 @@ export function genComponentModel (
       `: ${baseValueExpression})`
   }
   if (number) {
+    // _n: toNumber，转换为数字
     valueExpression = `_n(${valueExpression})`
   }
   const assignment = genAssignmentCode(value, valueExpression)
@@ -67,12 +73,28 @@ type ModelParseResult = {
   key: string | null
 }
 
+/**
+ * 解析出 v-model 表达式里的 exp 部分和 key 部分
+ * @param {*} val 表达式
+ * @return {Object} 结果对象，{ exp、key }
+ *
+ * 针对可能的表达式返回的结果：
+ *
+ * - test ：                              {exp: 'test', key: null}
+ * - test.test1 :                         {exp: 'test', key: '"test1"'}
+ * - test[key]                            {exp: 'test', key: 'key'}
+ * - test[test1[key]]                     {exp: 'test', key: 'test1[key]'}
+ * - test["a"][key]                       {exp: 'test["a"]', key: 'key'}
+ * - xxx.test[a[a].test1[key]]            {exp: 'xxx.test', key: 'a[a].test1[key]'}
+ * - test.xxx.a["asa"][test1[key]]        {exp: 'test.xxx.a["asa"]', key: 'test1[key]'}
+ */
 export function parseModel (val: string): ModelParseResult {
   // Fix https://github.com/vuejs/vue/pull/7730
   // allow v-model="obj.val " (trailing whitespace)
   val = val.trim()
   len = val.length
 
+  // 不存在 [，或 ] 不是最后一位
   if (val.indexOf('[') < 0 || val.lastIndexOf(']') < len - 1) {
     index = val.lastIndexOf('.')
     if (index > -1) {
@@ -97,6 +119,7 @@ export function parseModel (val: string): ModelParseResult {
     if (isStringStart(chr)) {
       parseString(chr)
     } else if (chr === 0x5B) {
+      // 0x5B: 左中括号 [
       parseBracket(chr)
     }
   }
@@ -116,6 +139,8 @@ function eof (): boolean {
 }
 
 function isStringStart (chr: number): boolean {
+  // 0x22: 双引号 "
+  // 0x27: 单引号 '
   return chr === 0x22 || chr === 0x27
 }
 
@@ -128,6 +153,8 @@ function parseBracket (chr: number): void {
       parseString(chr)
       continue
     }
+    // 0x5B: 左中括号 [
+    // 0x5D: 右中括号 ]
     if (chr === 0x5B) inBracket++
     if (chr === 0x5D) inBracket--
     if (inBracket === 0) {
@@ -137,6 +164,9 @@ function parseBracket (chr: number): void {
   }
 }
 
+/**
+ * 解析字符串，找到下一个相同的符号，比如 " 或 '
+ */
 function parseString (chr: number): void {
   const stringQuote = chr
   while (!eof()) {

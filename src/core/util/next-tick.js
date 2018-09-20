@@ -1,6 +1,22 @@
 /* @flow */
 /* globals MessageChannel */
 
+/**
+ * `Vue.nextTick`的实现，按浏览器支持的优先级，依次使用如下方式。
+ * `macroTask`:
+ * - `setImmediate`
+ * - `MessageChannel`
+ * - `setTimeout`
+
+ * `microTask`:
+ * - `promise`
+ * - 降级使用 macroTask 的实现方式
+
+ * 注意：
+ * - 当在 DOM 的事件处理函数里调用`nextTick`时，`nextTick`会使用`macroTask`
+ * - 同步多次调用`nextTick`，会将这多个回调放在`callbacks`数组里，一起调用
+ */
+
 import { noop } from 'shared/util'
 import { handleError } from './error'
 import { isIOS, isNative } from './env'
@@ -77,6 +93,11 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
 /**
  * Wrap a function so that if any code inside triggers state change,
  * the changes are queued using a (macro) task instead of a microtask.
+ *
+ * 调用方式：handler = withMacroTask(handler)
+ *
+ * 如果原始的 handler 内有调用任何的 nextTick，则最终 handler 执行时，nextTick 使用的是 macroTimerFunc
+ *
  */
 export function withMacroTask (fn: Function): Function {
   return fn._withTask || (fn._withTask = function () {

@@ -4,6 +4,7 @@ import { isDef, isUndef, extend, toNumber } from 'shared/util'
 
 function updateDOMProps (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   if (isUndef(oldVnode.data.domProps) && isUndef(vnode.data.domProps)) {
+    // 若新旧 VNode 都不存在 domProps 数据，则无需更新
     return
   }
   let key, cur
@@ -11,20 +12,25 @@ function updateDOMProps (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const oldProps = oldVnode.data.domProps || {}
   let props = vnode.data.domProps || {}
   // clone observed objects, as the user probably wants to mutate it
+  // TODO: 待确定哪里对 domProps 进行了响应式处理
+  // 为了防止用户直接修改 attribute 的值，此处克隆一份数据
   if (isDef(props.__ob__)) {
     props = vnode.data.domProps = extend({}, props)
   }
 
+  // 清空不在新 VNode 里的老的 domProp
   for (key in oldProps) {
     if (isUndef(props[key])) {
       elm[key] = ''
     }
   }
+  // 设置 domProp
   for (key in props) {
     cur = props[key]
     // ignore children if the node has textContent or innerHTML,
     // as these will throw away existing DOM nodes and cause removal errors
     // on subsequent patches (#3360)
+    // 若设置的是 textContent 和 innerHTML 属性，则该 DOM 元素的子节点就可以忽略了
     if (key === 'textContent' || key === 'innerHTML') {
       if (vnode.children) vnode.children.length = 0
       if (cur === oldProps[key]) continue
@@ -45,6 +51,7 @@ function updateDOMProps (oldVnode: VNodeWithData, vnode: VNodeWithData) {
         elm.value = strCur
       }
     } else {
+      // 设置 DOM 元素节点的 property
       elm[key] = cur
     }
   }

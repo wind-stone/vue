@@ -17,12 +17,17 @@ import {
   isFalsyAttrValue
 } from 'web/util/index'
 
+/**
+ * 更新 attributes
+ */
 function updateAttrs (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const opts = vnode.componentOptions
   if (isDef(opts) && opts.Ctor.options.inheritAttrs === false) {
+    // 若是组件占位 VNode，且组件设置了不继承非 props 的特性，则无需更新
     return
   }
   if (isUndef(oldVnode.data.attrs) && isUndef(vnode.data.attrs)) {
+    // 若新旧 VNode 上都不存在 attrs 数据，则无需更新
     return
   }
   let key, cur, old
@@ -30,10 +35,13 @@ function updateAttrs (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const oldAttrs = oldVnode.data.attrs || {}
   let attrs: any = vnode.data.attrs || {}
   // clone observed objects, as the user probably wants to mutate it
+  // vm.$attrs 是响应式的，且指向了 vnode.data.attrs，且为 vm.$attrs 添加响应式的操作在前，因此 vnode.data.attrs 也是响应式的
+  // 为了防止用户直接修改 attribute 的值，此处克隆一份数据
   if (isDef(attrs.__ob__)) {
     attrs = vnode.data.attrs = extend({}, attrs)
   }
 
+  // 更新特性
   for (key in attrs) {
     cur = attrs[key]
     old = oldAttrs[key]
@@ -47,6 +55,7 @@ function updateAttrs (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   if ((isIE || isEdge) && attrs.value !== oldAttrs.value) {
     setAttr(elm, 'value', attrs.value)
   }
+  // 删除已不存在的旧特性
   for (key in oldAttrs) {
     if (isUndef(attrs[key])) {
       if (isXlink(key)) {
@@ -58,6 +67,9 @@ function updateAttrs (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   }
 }
 
+/**
+ * 设置 DOM 元素节点的 attribute
+ */
 function setAttr (el: Element, key: string, value: any) {
   if (el.tagName.indexOf('-') > -1) {
     baseSetAttr(el, key, value)
@@ -65,6 +77,7 @@ function setAttr (el: Element, key: string, value: any) {
     // set attribute for blank value
     // e.g. <option disabled>Select one</option>
     if (isFalsyAttrValue(value)) {
+      // 特性的值为 null 和 false，移除特性
       el.removeAttribute(key)
     } else {
       // technically allowfullscreen is a boolean attribute for <iframe>,
@@ -89,6 +102,7 @@ function setAttr (el: Element, key: string, value: any) {
 
 function baseSetAttr (el, key, value) {
   if (isFalsyAttrValue(value)) {
+    // 特性的值为 null 和 false，移除特性
     el.removeAttribute(key)
   } else {
     // #7138: IE10 & 11 fires input event when setting placeholder on
@@ -108,6 +122,7 @@ function baseSetAttr (el, key, value) {
       // $flow-disable-line
       el.__ieph = true /* IE placeholder patched */
     }
+    // 设置特性
     el.setAttribute(key, value)
   }
 }

@@ -31,6 +31,7 @@ extend(Vue.options.directives, platformDirectives)
 extend(Vue.options.components, platformComponents)
 
 // install platform patch function
+// 若不是浏览器环境（服务端渲染），__patch__ 为 noop 函数
 Vue.prototype.__patch__ = inBrowser ? patch : noop
 
 // public mount method
@@ -46,6 +47,7 @@ Vue.prototype.$mount = function (
 /* istanbul ignore next */
 if (inBrowser) {
   setTimeout(() => {
+    // 允许 vue-devtools 检查代码
     if (config.devtools) {
       if (devtools) {
         devtools.emit('init', Vue)

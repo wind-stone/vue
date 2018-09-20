@@ -22,6 +22,10 @@ export function def (obj: Object, key: string, val: any, enumerable?: boolean) {
 
 /**
  * Parse simple path.
+ * 解析路径，路径里只能包含如下三类字符
+ * - \w（即[A-Za-z0-9_]）
+ * - .
+ * - $
  */
 const bailRE = /[^\w.$]/
 export function parsePath (path: string): any {
