@@ -15,9 +15,6 @@
  *
  * 组件可能会存在[非 Prop 特性](https://cn.vuejs.org/v2/guide/components.html#%E9%9D%9E-Prop-%E7%89%B9%E6%80%A7)，
  * 对于没在组件内定义为`prop`的特性，会直接传入组件并被添加到组件的根元素上。
- *
- * 如果组件存在非 prop 特性，当将`template`编译成`render`函数时，我们就无法判断该特性是否是组件内定义的`prop`
- * 因此`createElement`里的`data`就会包含`attrs`和`props`，需要我们自行根据组件选项对象里的`props`去`data.attrs/props`里筛选出需要的`prop`。
  */
 
 import {
@@ -30,7 +27,10 @@ import {
 } from 'core/util/index'
 
 /**
- * 根据组件选项对象里定义的 props 选项里的 key，从 data.props/attrs 提取出 prop 数据
+ * 根据组件选项对象里定义的 options.props，从数据对象 data.props/attrs 提取出 props 数据
+ *
+ * PS: 组件若是使用模板，在模板编译阶段，会将模板上的所有特性都提取到元素的数据对象`data.attrs`上；
+ *     若是使用`render`函数，用户会将组件`props`相关的数据放置在数据对象`data.props`上。
  */
 export function extractPropsFromVNodeData (
   data: VNodeData,
@@ -55,6 +55,8 @@ export function extractPropsFromVNodeData (
           key !== keyInLowerCase &&
           attrs && hasOwn(attrs, keyInLowerCase)
         ) {
+          // 警告：prop 注册是 camelCased，但是在模板里使用时用的是 camelCased/camelcased
+          // 在模板里使用时，应该用 camel-cased
           tip(
             `Prop "${keyInLowerCase}" is passed to component ` +
             `${formatComponentName(tag || Ctor)}, but the declared prop name is` +
@@ -76,7 +78,7 @@ export function extractPropsFromVNodeData (
 }
 
 /**
- * 检查 prop 是否存在在给定的 hash 里
+ * 检查 prop 是否存在在给定的 hash 里，若存在，添加到 res 里
  */
 function checkProp (
   res: Object,

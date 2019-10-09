@@ -200,7 +200,7 @@ export function createComponent (
   }
 
   // extract props
-  // 提取 props 数据
+  // 提取外部传给组件的 propsData
   const propsData = extractPropsFromVNodeData(data, Ctor, tag)
 
   // functional component

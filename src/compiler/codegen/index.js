@@ -276,7 +276,7 @@ export function genData (el: ASTElement, state: CodegenState): string {
   }
   // slot target
   // only for non-scoped slots
-  // 普通插槽
+  // 该元素是父组件模板里子组件标签内的普通插槽
   if (el.slotTarget && !el.slotScope) {
     data += `slot:${el.slotTarget},`
   }
@@ -524,7 +524,8 @@ export function genComment (comment: ASTText): string {
 }
 
 /**
- * 生成 slot 标签的内容（针对 el.tag 为 slot 的标签）
+ * （针对子组件里的 slot 标签）
+ * 生成 slot 标签的内容
  *
  * 最终拼装成 _t(slotName, children, attrs对象, bind对象)
  */

@@ -96,6 +96,11 @@ function isDirtyWithModifiers (elm: any, newVal: string): boolean {
   return value !== newVal
 }
 
+/**
+ * domProps 可能存在的 key 有
+ *
+ * - 通过 v-model 指令添加的 value
+ */
 export default {
   create: updateDOMProps,
   update: updateDOMProps

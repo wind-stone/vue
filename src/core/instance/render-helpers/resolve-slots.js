@@ -4,8 +4,8 @@ import type VNode from 'core/vdom/vnode'
 
 /**
  * Runtime helper for resolving raw children VNodes into a slot object.
- * 返回 vnode 节点所有的 slots 对象
- * { key: slot数组 }
+ * 返回子组件标签里所有 slot 内容的 VNode 节点
+ * { key: slot 内容的 VNode 节点数组 }
  */
 export function resolveSlots (
   children: ?Array<VNode>,

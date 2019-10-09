@@ -618,7 +618,7 @@ function processSlot (el) {
       }
       el.slotScope = slotScope
     }
-    // 常规插槽 slot
+    // 命名插槽 slot
     const slotTarget = getBindingAttr(el, 'slot')
     if (slotTarget) {
       el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget

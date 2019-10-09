@@ -168,9 +168,11 @@ function genDefaultModel (
 
   let code = genAssignmentCode(value, valueExpression)
   if (needCompositionGuard) {
+    // composing 用于处理中文输入截断问题，详见：https://segmentfault.com/a/1190000009246058
     code = `if($event.target.composing)return;${code}`
   }
 
+  // 添加名为 value 的 prop
   addProp(el, 'value', `(${value})`)
   addHandler(el, event, code, null, true)
   if (trim || number) {
