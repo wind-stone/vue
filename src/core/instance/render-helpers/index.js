@@ -27,6 +27,7 @@ export function installRenderHelpers (target: any) {
   target._v = createTextVNode
   target._e = createEmptyVNode
   target._u = resolveScopedSlots
+  // 将指令 v-on 的回调放到 data.on 上
   target._g = bindObjectListeners
   target._d = bindDynamicKeys
   target._p = prependModifier

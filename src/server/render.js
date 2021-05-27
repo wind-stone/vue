@@ -29,6 +29,10 @@ const onCompilationError = (err, vm) => {
   throw new Error(`\n\u001b[31m${err}${trace}\u001b[39m\n`)
 }
 
+/**
+ * 标准化 render 函数，若 vm.$options.render 不存在，则将 vm.$options.template 编译成 render 函数
+ * @param {*} vm vm 实例
+ */
 const normalizeRender = vm => {
   const { render, template, _scopeId } = vm.$options
   if (isUndef(render)) {
@@ -50,6 +54,9 @@ const normalizeRender = vm => {
   }
 }
 
+/**
+ * 等待服务端预取数据完成
+ */
 function waitForServerPrefetch (vm, resolve, reject) {
   let handlers = vm.$options.serverPrefetch
   if (isDef(handlers)) {
@@ -71,6 +78,9 @@ function waitForServerPrefetch (vm, resolve, reject) {
   resolve()
 }
 
+/**
+ * 根据节点的类型，渲染节点
+ */
 function renderNode (node, isRoot, context) {
   if (node.isString) {
     renderStringNode(node, context)
@@ -297,6 +307,7 @@ function renderElement (el, isRoot, context) {
   if (isTrue(isRoot)) {
     if (!el.data) el.data = {}
     if (!el.data.attrs) el.data.attrs = {}
+    // 针对服务端渲染的根节点，增加服务端渲染标记
     el.data.attrs[SSR_ATTR] = 'true'
   }
 
@@ -307,8 +318,10 @@ function renderElement (el, isRoot, context) {
   const startTag = renderStartingTag(el, context)
   const endTag = `</${el.tag}>`
   if (context.isUnaryTag(el.tag)) {
+    // 一元标签（可以自闭和）
     write(startTag, next)
   } else if (isUndef(el.children) || el.children.length === 0) {
+    // 非一元标签，且无子节点
     write(startTag + endTag, next)
   } else {
     const children: Array<VNode> = el.children
@@ -324,6 +337,7 @@ function renderElement (el, isRoot, context) {
 }
 
 function hasAncestorData (node: VNode) {
+  // vnode 是组件实例通过 _render 生成的渲染 VNode，而 vnode.parent 是指组件占位 VNode
   const parentNode = node.parent
   return isDef(parentNode) && (isDef(parentNode.data) || hasAncestorData(parentNode))
 }
@@ -344,6 +358,9 @@ function getVShowDirectiveInfo (node: VNode): ?VNodeDirective {
   return dir
 }
 
+/**
+ * 渲染开始标签，
+ */
 function renderStartingTag (node: VNode, context) {
   let markup = `<${node.tag}`
   const { directives, modules } = context
@@ -413,12 +430,15 @@ export function createRenderFunction (
   cache: any
 ) {
   return function render (
+    // vm 实例
     component: Component,
     write: (text: string, next: Function) => void,
     userContext: ?Object,
     done: Function
   ) {
     warned = Object.create(null)
+
+    // 传入的这些参数，最终都会挂在 context 上
     const context = new RenderContext({
       activeInstance: component,
       userContext,
@@ -426,12 +446,17 @@ export function createRenderFunction (
       isUnaryTag, modules, directives,
       cache
     })
+
+    // 安装 Node 端渲染的辅助函数
     installSSRHelpers(component)
     normalizeRender(component)
 
     const resolve = () => {
+      // component._render() 会调用 vm.$options.render() 并返回最终生成的 VNode
       renderNode(component._render(), true, context)
     }
+
+    // 等待服务端预取数据完成
     waitForServerPrefetch(component, resolve, done)
   }
 }

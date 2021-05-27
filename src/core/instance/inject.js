@@ -1,5 +1,10 @@
 /* @flow */
 
+/**
+ * [inject/provide 使用方式](https://cn.vuejs.org/v2/api/#provide-inject)
+ * 需要注意的是，如果 inject 的`key`的`value`是原始值，则子组件对`value`的修改不会影响父组件的`value`
+ */
+
 import { hasOwn } from 'shared/util'
 import { warn, hasSymbol } from '../util/index'
 import { defineReactive, toggleObserving } from '../observer/index'
@@ -36,6 +41,11 @@ export function initInjections (vm: Component) {
   }
 }
 
+
+/**
+ * 返回 inject 的 key-value 对象
+ * { key1: val1, key2: val2}
+ */
 export function resolveInject (inject: any, vm: Component): ?Object {
   if (inject) {
     // inject is :any because flow is not smart enough to figure out cached
@@ -48,6 +58,7 @@ export function resolveInject (inject: any, vm: Component): ?Object {
       const key = keys[i]
       // #6574 in case the inject object is observed...
       if (key === '__ob__') continue
+      // mergeOptions 里已经对 inject 做过标准化处理，此处的 inject[key] 已经是对象啦
       const provideKey = inject[key].from
       let source = vm
       while (source) {
@@ -57,6 +68,7 @@ export function resolveInject (inject: any, vm: Component): ?Object {
         }
         source = source.$parent
       }
+      // 在祖先组件里未找到对应的 key
       if (!source) {
         if ('default' in inject[key]) {
           const provideDefault = inject[key].default

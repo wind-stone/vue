@@ -2,6 +2,9 @@
 
 import { warn, extend, isPlainObject } from 'core/util/index'
 
+/**
+ * 生成 render 函数时，（处理指令时）将 v-on 指令里指令名称和回调放到 VNodeData.on 上，而不是 data.directives
+ */
 export function bindObjectListeners (data: any, value: any): VNodeData {
   if (value) {
     if (!isPlainObject(value)) {

@@ -56,9 +56,16 @@ export default class Watcher {
     vm._watchers.push(this)
     // options
     if (options) {
+      // 是否要深度 watch
       this.deep = !!options.deep
+
+      // 是否是用户创造的 watcher，比如通过 $watch 调用或者组件对象的 watch 选项
       this.user = !!options.user
+
+      // 是否是惰性计算，如果是，初始化 watcher 时不进行求值计算
       this.lazy = !!options.lazy
+
+      // 是否要加入 watcher queue 后异步计算（会忽略掉重复的 watcher，除非相同的 watcher 之前已经计算过）
       this.sync = !!options.sync
       this.before = options.before
     } else {
@@ -81,6 +88,7 @@ export default class Watcher {
     } else {
       this.getter = parsePath(expOrFn)
       if (!this.getter) {
+        // 如果 expOrFn 里检测到包含了除了 字母、小数点、$ 以外的字符，将视为无效，并报错
         this.getter = noop
         process.env.NODE_ENV !== 'production' && warn(
           `Failed watching path: "${expOrFn}" ` +
@@ -103,9 +111,11 @@ export default class Watcher {
     let value
     const vm = this.vm
     try {
+      // 此处，会收集计算过程中的依赖
       value = this.getter.call(vm, vm)
     } catch (e) {
       if (this.user) {
+        // 如果是用户创造的 watcher，计算出错的话需要报错
         handleError(e, vm, `getter for watcher "${this.expression}"`)
       } else {
         throw e
@@ -114,6 +124,7 @@ export default class Watcher {
       // "touch" every property so they are all tracked as
       // dependencies for deep watching
       if (this.deep) {
+        // 此处，如果是深度 watch，将对计算的返回值的所有下属 key-value 收集依赖
         traverse(value)
       }
       popTarget()
@@ -131,6 +142,7 @@ export default class Watcher {
       this.newDepIds.add(id)
       this.newDeps.push(dep)
       if (!this.depIds.has(id)) {
+        // 若是该 watcher 之前没有过该 dep，则将 watcher 添加到 dep.subs（订阅者） 里
         dep.addSub(this)
       }
     }
@@ -144,6 +156,8 @@ export default class Watcher {
     while (i--) {
       const dep = this.deps[i]
       if (!this.newDepIds.has(dep.id)) {
+        // 如果最近一次计算没有用到某个 dep，将该 watcher 从这个 dep 里删除（比如 if else 的情况）
+        // （这样下次这个 dep 有变化，就不会通知这个 watcher 了）
         dep.removeSub(this)
       }
     }
@@ -164,6 +178,7 @@ export default class Watcher {
   update () {
     /* istanbul ignore else */
     if (this.lazy) {
+      // 对于惰性计算的 watcher（如计算属性产生的 watcher），不立即进行计算，而是获取值的时候再计算
       this.dirty = true
     } else if (this.sync) {
       this.run()
@@ -194,6 +209,7 @@ export default class Watcher {
           try {
             this.cb.call(this.vm, value, oldValue)
           } catch (e) {
+            // 如果是用户创造的 watcher，计算出错的话需要报错
             handleError(e, this.vm, `callback for watcher "${this.expression}"`)
           }
         } else {
@@ -214,6 +230,7 @@ export default class Watcher {
 
   /**
    * Depend on all deps collected by this watcher.
+   * 跨级收集依赖
    */
   depend () {
     let i = this.deps.length
@@ -231,6 +248,8 @@ export default class Watcher {
       // this is a somewhat expensive operation so we skip it
       // if the vm is being destroyed.
       if (!this.vm._isBeingDestroyed) {
+        // 如果 vm 不是正在被销毁，则将该 watcher 从 vm._watchers 移除
+        // 因为 vm._watchers 可能有大量的 watcher，因此如果 vm 正在被销毁，就没必要从 vm._watchers 里移除 watcher（反正所有的 watcher 都没用了）
         remove(this.vm._watchers, this)
       }
       let i = this.deps.length

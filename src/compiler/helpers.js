@@ -66,10 +66,15 @@ function prependModifierMarker (symbol: string, name: string, dynamic?: boolean)
     : symbol + name // mark the event as captured
 }
 
+
+/**
+ * 将事件处理器添加到 el.nativeEvents/events 对象里
+ */
 export function addHandler (
   el: ASTElement,
   name: string,
   value: string,
+  // 修饰符对象
   modifiers: ?ASTModifiers,
   important?: boolean,
   warn?: ?Function,
@@ -110,10 +115,12 @@ export function addHandler (
 
   // check capture modifier
   if (modifiers.capture) {
+    // 事件是在捕获阶段触发
     delete modifiers.capture
     name = prependModifierMarker('!', name, dynamic)
   }
   if (modifiers.once) {
+    // 事件只触发一次
     delete modifiers.once
     name = prependModifierMarker('~', name, dynamic)
   }
@@ -158,6 +165,9 @@ export function getRawBindingAttr (
     el.rawAttrsMap[name]
 }
 
+/**
+ * 获取 AST 元素上绑定的特性的值；若绑定值不存在，获取静态值
+ */
 export function getBindingAttr (
   el: ASTElement,
   name: string,
@@ -171,6 +181,7 @@ export function getBindingAttr (
   } else if (getStatic !== false) {
     const staticValue = getAndRemoveAttr(el, name)
     if (staticValue != null) {
+      // 如是静态值的话，或经过 JSON.stringify
       return JSON.stringify(staticValue)
     }
   }
@@ -180,6 +191,9 @@ export function getBindingAttr (
 // doesn't get processed by processAttrs.
 // By default it does NOT remove it from the map (attrsMap) because the map is
 // needed during codegen.
+/**
+ * 获取 AST 元素上的特性的值，并从 AST 元素的 attrsList 和 attrsMap（可选）将特性删除
+ */
 export function getAndRemoveAttr (
   el: ASTElement,
   name: string,

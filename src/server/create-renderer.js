@@ -45,6 +45,8 @@ export function createRenderer ({
   clientManifest,
   serializer
 }: RenderOptions = {}): Renderer {
+
+  // 创建 render 函数，该函数会将 Vue 实例渲染成字符串
   const render = createRenderFunction(modules, directives, isUnaryTag, cache)
   const templateRenderer = new TemplateRenderer({
     template,
@@ -57,18 +59,25 @@ export function createRenderer ({
 
   return {
     renderToString (
+      // 组件实例对象
       component: Component,
+      // 用于模板插值
       context: any,
+      // 回调函数，可以不传，会封装成 promise 形式
       cb: any
     ): ?Promise<string> {
+      // 处理不传入 context 的情况
       if (typeof context === 'function') {
         cb = context
         context = {}
       }
       if (context) {
+        // 往 context 上挂载 rendererResourceHints/rendererState/rendererScripts/rendererStyles/getPreloadFiles 等方法
         templateRenderer.bindRenderFns(context)
       }
 
+      // 处理不传入 cb 的情况
+      // 没有传 cb（形如 (err, html) => { ... } 的函数），则新创建一个 cb 并返回 promise；等到调用 cb 后，会触发 promise 的 resolve/reject
       // no callback, return Promise
       let promise
       if (!cb) {
@@ -76,11 +85,14 @@ export function createRenderer ({
       }
 
       let result = ''
+      // 该方法之后会挂在 context.write 上，并可通过 context.write.caching 确定是否要进行对写入的内容进行缓存
       const write = createWriteFunction(text => {
         result += text
         return false
+      // 传入 cb 主要是用于内部错误的时候使用
       }, cb)
       try {
+        // 调用 render 函数，将 Vue 实例渲染成字符串
         render(component, write, context, err => {
           if (err) {
             return cb(err)
@@ -90,6 +102,7 @@ export function createRenderer ({
           }
           if (template) {
             try {
+              // 若是存在模板，则将组件的渲染结果字符串和模板结合一下再返回
               const res = templateRenderer.render(result, context)
               if (typeof res !== 'string') {
                 // function template returning promise
@@ -110,6 +123,9 @@ export function createRenderer ({
         cb(e)
       }
 
+      // 始终返回 promise。
+      // 针对传入 cb 的情况，这个 promise 是 undefined，开发者不需要关心这个返回值
+      // 针对未传入 cb 的情况，经过 createPromiseCallback() 重新赋值 promise 和 cb 后，在调用 cb 后，会触发 promise 的 resolve/reject
       return promise
     },
 

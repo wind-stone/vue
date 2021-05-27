@@ -29,10 +29,17 @@ export function setActiveInstance(vm: Component) {
   }
 }
 
+/**
+ * 初始化 lifecycle，添加 vm.$parent/$root 等初始化数据
+ */
 export function initLifecycle (vm: Component) {
   const options = vm.$options
+  // 注意：keep-alive 组件和 transition 组件是 abstract 的
 
   // locate first non-abstract parent
+
+  // 初始化组件的 $options 时，vm.$options.parent 已经指向父组件
+  // 此处将组件加入到父组件的 $children 里
   let parent = options.parent
   if (parent && !options.abstract) {
     while (parent.$options.abstract && parent.$parent) {
@@ -41,7 +48,10 @@ export function initLifecycle (vm: Component) {
     parent.$children.push(vm)
   }
 
+  // 第一个非抽象父组件
   vm.$parent = parent
+
+  // 根组件
   vm.$root = parent ? parent.$root : vm
 
   vm.$children = []
@@ -56,6 +66,9 @@ export function initLifecycle (vm: Component) {
 }
 
 export function lifecycleMixin (Vue: Class<Component>) {
+  /**
+   * 该函数的主要作用是，传入新的 vnode，更新视图。
+   */
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
     const prevEl = vm.$el
@@ -65,6 +78,8 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
     if (!prevVnode) {
+      // 如果是根实例 patch，vm.$el 有值，vm.$options._parentElm 无值，最终会挂载在 vm.$el.parent 之下
+      // 如果是组件实例，vm.$el 为空，vm.$options._parentElm 有值，最终会挂载在 vm.$options._parentElm 之下
       // initial render
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
     } else {
@@ -81,12 +96,25 @@ export function lifecycleMixin (Vue: Class<Component>) {
     }
     // if parent is an HOC, update its $el as well
     if (vm.$vnode && vm.$parent && vm.$vnode === vm.$parent._vnode) {
+      // 如果是连续两个组件的情况，比如 componet-father 组件的如下定义，将更新父组件的 $el
+      // <template>
+      //   <component-son>
+      //   </component-son>
+      // </template>
       vm.$parent.$el = vm.$el
     }
     // updated hook is called by the scheduler to ensure that children are
     // updated in a parent's updated hook.
   }
 
+  /**
+   * 强制“渲染`watcher`”重新计算表达式的值、收集依赖、执行回调
+   * （“渲染`watcher`”的回调里会返回新的`vnode`并更新视图）。
+   *
+   * 需要注意，
+   *   - `beforeDestroy`钩子函数的调用顺序是：先父组件、后子组件
+   *   - `destroy`钩子函数的调用顺序是：先子组件、后父组件
+   */
   Vue.prototype.$forceUpdate = function () {
     const vm: Component = this
     if (vm._watcher) {
@@ -117,6 +145,9 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // remove reference from data ob
     // frozen object may not have observer.
     if (vm._data.__ob__) {
+      // 如果组件选项里的 data 不是函数而是对象，
+      // 会存在多个 vm 实例可能共用一个 data的情况，
+      // 因此 vm 销毁时，data.__ob__.vmCount 也要自减
       vm._data.__ob__.vmCount--
     }
     // call the last hook...
@@ -138,6 +169,12 @@ export function lifecycleMixin (Vue: Class<Component>) {
   }
 }
 
+/**
+ * 将组件挂载到元素上，创建渲染`watcher`，一旦模板里依赖的数据有更改，将更新模板。
+ * 注意：
+ *   - 只有根实例调用`vm.$mount()`方法时，才会传入`el`参数（根实例不知道父元素是哪个，需要手动传入要挂载到的元素）
+ *   - 子组件的挂载都是直接挂载在父元素上
+ */
 export function mountComponent (
   vm: Component,
   el: ?Element,
@@ -205,6 +242,8 @@ export function mountComponent (
 
   // manually mounted instance, call mounted on self
   // mounted is called for render-created child components in its inserted hook
+  // Vue 根实例没有 $vnode 属性，需要手动调用 mounted 生命周期钩子函数
+  // （子组件会在 Vnode 的 inserted 钩子里调用 mounted 生命周期函数）
   if (vm.$vnode == null) {
     vm._isMounted = true
     callHook(vm, 'mounted')
@@ -212,6 +251,10 @@ export function mountComponent (
   return vm
 }
 
+
+/**
+ * 更新组件的 props、listeners、slots 等
+ */
 export function updateChildComponent (
   vm: Component,
   propsData: ?Object,
@@ -252,6 +295,7 @@ export function updateChildComponent (
   if (vm._vnode) { // update child tree's parent
     vm._vnode.parent = parentVnode
   }
+  // 替换为新的 static slots
   vm.$options._renderChildren = renderChildren
 
   // update $attrs and $listeners hash
@@ -261,6 +305,7 @@ export function updateChildComponent (
   vm.$listeners = listeners || emptyObject
 
   // update props
+  // 更新组件的 props
   if (propsData && vm.$options.props) {
     toggleObserving(false)
     const props = vm._props

@@ -35,6 +35,7 @@ function updateAttrs (oldVnode: VNodeWithData, vnode: VNodeWithData) {
     attrs = vnode.data.attrs = extend({}, attrs)
   }
 
+  // 更新特性
   for (key in attrs) {
     cur = attrs[key]
     old = oldAttrs[key]
@@ -48,6 +49,7 @@ function updateAttrs (oldVnode: VNodeWithData, vnode: VNodeWithData) {
   if ((isIE || isEdge) && attrs.value !== oldAttrs.value) {
     setAttr(elm, 'value', attrs.value)
   }
+  // 删除已不存在的旧特性
   for (key in oldAttrs) {
     if (isUndef(attrs[key])) {
       if (isXlink(key)) {

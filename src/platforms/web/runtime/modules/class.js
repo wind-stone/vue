@@ -11,6 +11,11 @@ import {
   genClassForVnode
 } from 'web/util/index'
 
+/**
+ * 更新元素的 class 特性
+ * @param {*} oldVnode 上一次的 vnode 节点
+ * @param {*} vnode 此次更新的 vnode 节点
+ */
 function updateClass (oldVnode: any, vnode: any) {
   const el = vnode.elm
   const data: VNodeData = vnode.data
@@ -27,6 +32,7 @@ function updateClass (oldVnode: any, vnode: any) {
     return
   }
 
+  // 生成最终的 class 字符串（结合 staticClass 和 class）
   let cls = genClassForVnode(vnode)
 
   // handle transition classes

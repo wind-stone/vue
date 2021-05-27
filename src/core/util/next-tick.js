@@ -1,6 +1,22 @@
 /* @flow */
 /* globals MutationObserver */
 
+/**
+ * `Vue.nextTick`的实现，按浏览器支持的优先级，依次使用如下方式。
+ * `macroTask`:
+ * - `setImmediate`
+ * - `MessageChannel`
+ * - `setTimeout`
+
+ * `microTask`:
+ * - `promise`
+ * - 降级使用 macroTask 的实现方式
+
+ * 注意：
+ * - 当在 DOM 的事件处理函数里调用`nextTick`时，`nextTick`会使用`macroTask`
+ * - 同步多次调用`nextTick`，会将这多个回调放在`callbacks`数组里，一起调用
+ */
+
 import { noop } from 'shared/util'
 import { handleError } from './error'
 import { isIE, isIOS, isNative } from './env'

@@ -25,6 +25,7 @@ const ALWAYS_NORMALIZE = 2
 
 // wrapper function for providing a more flexible interface
 // without getting yelled at by flow
+// createElement 是对 _createElement 进行了包装，以及标准化所有的参数
 export function createElement (
   context: Component,
   tag: any,
@@ -44,22 +45,30 @@ export function createElement (
   return _createElement(context, tag, data, children, normalizationType)
 }
 
+
+/**
+ * 生成`VNode`类型的元素，同时调用`normalizeChildren`/`simpleNormalizeChildren`保证其子元素也都是`VNode`类型。
+ */
 export function _createElement (
-  context: Component,
+  context: Component, // 元素创建时的当前组件实例
   tag?: string | Class<Component> | Function | Object,
   data?: VNodeData,
   children?: any,
   normalizationType?: number
 ): VNode | Array<VNode> {
   if (isDef(data) && isDef((data: any).__ob__)) {
-    process.env.NODE_ENV !== 'production' && warn(
-      `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
-      'Always create fresh vnode data objects in each render!',
-      context
-    )
+    // 这里影响显示效果，暂先注释
+    // process.env.NODE_ENV !== 'production' && warn(
+    //   `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
+    //   'Always create fresh vnode data objects in each render!',
+    //   context
+    // )
     return createEmptyVNode()
   }
   // object syntax in v-bind
+  // 适用于以下两种情况：
+  // 1、动态组件：<component :is="xxx"></component>
+  // 2、DOM 模板解析：<table><tr is="my-row"></tr></table>
   if (isDef(data) && isDef(data.is)) {
     tag = data.is
   }
@@ -87,6 +96,7 @@ export function _createElement (
     data.scopedSlots = { default: children[0] }
     children.length = 0
   }
+  // 经过标准化处理后， children 为 VNode 类型的数组
   if (normalizationType === ALWAYS_NORMALIZE) {
     children = normalizeChildren(children)
   } else if (normalizationType === SIMPLE_NORMALIZE) {
@@ -94,7 +104,10 @@ export function _createElement (
   }
   let vnode, ns
   if (typeof tag === 'string') {
+    // tag 为标签字符串
+
     let Ctor
+    // 此时 context.$vnode 为 parentVnode，即先使用 parentVnode 的 ns
     ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag)
     if (config.isReservedTag(tag)) {
       // platform built-in elements
@@ -104,12 +117,14 @@ export function _createElement (
           context
         )
       }
+      // 平台内置元素，web 平台下包括 HTML 标签和 SVG 标签
       vnode = new VNode(
         config.parsePlatformTagName(tag), data, children,
         undefined, undefined, context
       )
     } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
       // component
+      // 局部注册的组件（包括继承、混合而来的）
       vnode = createComponent(Ctor, data, context, children, tag)
     } else {
       // unknown or unlisted namespaced elements
@@ -122,6 +137,7 @@ export function _createElement (
     }
   } else {
     // direct component options / constructor
+    // tag 为 组件选项对象，或者一个返回值类型为 String/Object 的函数
     vnode = createComponent(tag, data, context, children)
   }
   if (Array.isArray(vnode)) {

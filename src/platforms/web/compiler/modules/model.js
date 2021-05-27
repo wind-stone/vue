@@ -23,6 +23,9 @@ import {
   createASTElement
 } from 'compiler/parser/index'
 
+/**
+ * 预处理 AST input 元素上具有 v-model 指令并且 type 是动态绑定的情况
+ */
 function preTransformNode (el: ASTElement, options: CompilerOptions) {
   if (el.tag === 'input') {
     const map = el.attrsMap
@@ -32,6 +35,7 @@ function preTransformNode (el: ASTElement, options: CompilerOptions) {
 
     let typeBinding
     if (map[':type'] || map['v-bind:type']) {
+      // 获取动态绑定的 type 值，若没有，获取静态的 type 值
       typeBinding = getBindingAttr(el, 'type')
     }
     if (!map.type && !typeBinding && map['v-bind']) {
@@ -39,6 +43,7 @@ function preTransformNode (el: ASTElement, options: CompilerOptions) {
     }
 
     if (typeBinding) {
+      // 获取元素 v-if、v-else、v-else-if 的值，并将这些特性从 attrsMap 删除
       const ifCondition = getAndRemoveAttr(el, 'v-if', true)
       const ifConditionExtra = ifCondition ? `&&(${ifCondition})` : ``
       const hasElse = getAndRemoveAttr(el, 'v-else', true) != null

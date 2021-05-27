@@ -28,6 +28,8 @@ export function createWriteFunction (
     if (text && cachedWrite.caching) {
       cachedWrite.cacheBuffer[cachedWrite.cacheBuffer.length - 1] += text
     }
+
+    // 针对暴露出的 renderToString 方法，waitForNext 始终为 false
     const waitForNext = write(text, next)
     if (waitForNext !== true) {
       if (stackDepth >= MAX_STACK_DEPTH) {

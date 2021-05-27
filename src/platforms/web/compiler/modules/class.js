@@ -7,8 +7,14 @@ import {
   baseWarn
 } from 'compiler/helpers'
 
+/**
+ * 处理 class，给 ASTElement 添加属性：
+ *   - staticClass：静态 class 属性值
+ *   - classBinding：动态绑定的 class 属性值
+ */
 function transformNode (el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
+  // 获取静态的 class 特性
   const staticClass = getAndRemoveAttr(el, 'class')
   if (process.env.NODE_ENV !== 'production' && staticClass) {
     const res = parseText(staticClass, options.delimiters)

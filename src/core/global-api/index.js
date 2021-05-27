@@ -1,5 +1,28 @@
 /* @flow */
 
+/**
+ * `Vue`构造函数创建好之后，需要给`Vue`挂载上一些方法和属性，列表如下：
+ *
+ * - `Vue.config`
+ * - `Vue.util`
+ *     - `Vue.util.warn`
+ *     - `Vue.util.extend`
+ *    - `Vue.util.mergeOptions`
+ *     - `Vue.util.defineReactive`
+ * - `Vue.set`（详见`../observer/index.md`）
+ * - `Vue.delete`（详见`../observer/index.md`）
+ * - `Vue.nextTick`（详见`../util/next-tick.md`）
+ * - `Vue.options`
+ *     - `Vue.options.components = { KeepAlive }`
+ *     - `Vue.options.directives = {}`
+ *     - `Vue.options.filters = {}`
+ *     - `Vue.options._base = Vue`
+ * - `Vue.use`（详见`./use.md`）
+ * - `Vue.extend`（详见`./extend.md`）
+ * - `Vue.mixin`（详见`./mixin.md`）
+ * - `Vue.component`/`Vue.directive`/`Vue.filter`（详见同目录下`assets.md`）
+ */
+
 import config from '../config'
 import { initUse } from './use'
 import { initMixin } from './mixin'

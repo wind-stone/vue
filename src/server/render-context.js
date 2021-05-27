@@ -24,6 +24,9 @@ type RenderState = {
   key: string;
 };
 
+/**
+ * 创建服务端渲染的 context
+ */
 export class RenderContext {
   userContext: ?Object;
   activeInstance: Component;
@@ -65,6 +68,10 @@ export class RenderContext {
     this.next = this.next.bind(this)
   }
 
+  /**
+   * 将 context.renderStates 数组里的每一个元素的子节点都转为字符串，最后追加关闭标签
+   * 该函数一般会作为 context.write 的回调函数，即在 context.write 一个元素开始标签之后，将该元素的所有子节点和关闭标签也 write
+   */
   next () {
     // eslint-disable-next-line
     while (true) {
@@ -76,6 +83,8 @@ export class RenderContext {
       switch (lastState.type) {
         case 'Element':
         case 'Fragment':
+          // 这里会递归地调用元素的所有子节点进行 renderNode，等到所有子节点都渲染之后，该元素才算渲染结束，才会退出 renderStates 数组。
+          // 因此这里要在当前元素上记录 rendered，表示下一个要渲染第几个子节点
           const { children, total } = lastState
           const rendered = lastState.rendered++
           if (rendered < total) {
@@ -91,6 +100,7 @@ export class RenderContext {
           this.renderStates.pop()
           this.activeInstance = lastState.prevActive
           break
+        // TODO: 这里等回来再看
         case 'ComponentWithCache':
           this.renderStates.pop()
           const { buffer, bufferIndex, componentBuffer, key } = lastState

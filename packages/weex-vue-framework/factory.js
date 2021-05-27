@@ -2688,6 +2688,7 @@ function renderSlot (
 
   var target = props && props.slot;
   if (target) {
+    // 这里是为了兼容 v2.6.0 以前的旧语法
     return this.$createElement('template', { slot: target }, nodes)
   } else {
     return nodes

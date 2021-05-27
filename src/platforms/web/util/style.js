@@ -2,9 +2,15 @@
 
 import { cached, extend, toObject } from 'shared/util'
 
+/**
+ * 解析 html 标签上 style 属性里的各个声明，转换成对象格式
+ * @return {Object} {声明的属性: 声明的值}
+ */
 export const parseStyleText = cached(function (cssText) {
   const res = {}
+  // 匹配 css 声明之间分隔的 ;
   const listDelimiter = /;(?![^(]*\))/g
+  // 匹配声明里属性和值之间分隔的 :
   const propertyDelimiter = /:(.+)/
   cssText.split(listDelimiter).forEach(function (item) {
     if (item) {
@@ -28,6 +34,7 @@ function normalizeStyleData (data: VNodeData): ?Object {
 // normalize possible array / string values into Object
 export function normalizeStyleBinding (bindingStyle: any): ?Object {
   if (Array.isArray(bindingStyle)) {
+    // 合并包含多个对象的数组为一个对象，如 [{a: 1}, {b: 2}]  => {a: 1, b: 2}
     return toObject(bindingStyle)
   }
   if (typeof bindingStyle === 'string') {

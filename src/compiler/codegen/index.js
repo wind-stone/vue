@@ -24,8 +24,10 @@ export class CodegenState {
   constructor (options: CompilerOptions) {
     this.options = options
     this.warn = options.warn || baseWarn
+    // 提取各个模块的 transformCode 和 genData 函数
     this.transforms = pluckModuleFunction(options.modules, 'transformCode')
     this.dataGenFns = pluckModuleFunction(options.modules, 'genData')
+    // 合并指令
     this.directives = extend(extend({}, baseDirectives), options.directives)
     const isReservedTag = options.isReservedTag || no
     this.maybeComponent = (el: ASTElement) => !!el.component || !isReservedTag(el.tag)
@@ -45,6 +47,7 @@ export function generate (
   options: CompilerOptions
 ): CodegenResult {
   const state = new CodegenState(options)
+  // _c: createElement
   const code = ast ? genElement(ast, state) : '_c("div")'
   return {
     render: `with(this){return ${code}}`,
@@ -52,31 +55,43 @@ export function generate (
   }
 }
 
+/**
+ * 生成 vnode 节点
+ */
 export function genElement (el: ASTElement, state: CodegenState): string {
   if (el.parent) {
     el.pre = el.pre || el.parent.pre
   }
 
   if (el.staticRoot && !el.staticProcessed) {
+    // el 是静态根节点 && 没经过 genStatic 处理
     return genStatic(el, state)
   } else if (el.once && !el.onceProcessed) {
+    // 节点存在 v-once 指令 && 未经过 genOnce 处理
     return genOnce(el, state)
   } else if (el.for && !el.forProcessed) {
+    // 节点存在 v-for 指令 && 未经过 genFor 处理
     return genFor(el, state)
   } else if (el.if && !el.ifProcessed) {
+    // 节点存在 v-if 指令 && 未经过 genIf 处理
     return genIf(el, state)
   } else if (el.tag === 'template' && !el.slotTarget && !state.pre) {
+    // 节点是 template 标签 && 该节点不是父组件里的插槽内容 && 该节点不是某个带有 v-pre 指令的节点的子孙节点
     return genChildren(el, state) || 'void 0'
   } else if (el.tag === 'slot') {
+    // 节点是（子组件里的） slot 节点
     return genSlot(el, state)
   } else {
     // component or element
     let code
     if (el.component) {
+      // 动态组件，el.component 是组件 is 特性的值
       code = genComponent(el.component, el, state)
     } else {
+      // 常规组件/HTML 标签
       let data
       if (!el.plain || (el.pre && state.maybeComponent(el))) {
+        // 生成节点的数据对象，数据对象的结构可参见: https://cn.vuejs.org/v2/guide/render-function.html#%E6%B7%B1%E5%85%A5-data-%E5%AF%B9%E8%B1%A1
         data = genData(el, state)
       }
 
@@ -96,6 +111,12 @@ export function genElement (el: ASTElement, state: CodegenState): string {
 }
 
 // hoist static sub-trees out
+
+/**
+ * 生成静态根节点的 code
+ *
+ * 注意，此时已经调用 genElement 先生成了 code，并放置在 staticRenderFns 里，方便以后直接使用
+ */
 function genStatic (el: ASTElement, state: CodegenState): string {
   el.staticProcessed = true
   // Some elements (templates) need to behave differently inside of a v-pre
@@ -105,6 +126,7 @@ function genStatic (el: ASTElement, state: CodegenState): string {
   if (el.pre) {
     state.pre = el.pre
   }
+  // 将静态根节点生成的代码保存在 staticRenderFns 函数里
   state.staticRenderFns.push(`with(this){return ${genElement(el, state)}}`)
   state.pre = originalPreState
   return `_m(${
@@ -115,11 +137,16 @@ function genStatic (el: ASTElement, state: CodegenState): string {
 }
 
 // v-once
+/**
+ * 生成 v-once 节点的 code
+ */
 function genOnce (el: ASTElement, state: CodegenState): string {
   el.onceProcessed = true
   if (el.if && !el.ifProcessed) {
+    // 针对存在 v-if 指令且未经过 genIf 处理的节点，先经过 genIf 处理（经过 genIf 处理完之后，会再次调用 genOnce）
     return genIf(el, state)
   } else if (el.staticInFor) {
+    // 该节点是静态节点或带有 v-once 的节点，并且是带有 v-for 指令的节点的子孙节点
     let key = ''
     let parent = el.parent
     while (parent) {
@@ -130,18 +157,31 @@ function genOnce (el: ASTElement, state: CodegenState): string {
       parent = parent.parent
     }
     if (!key) {
+      // 若该节点是存在 v-for 指令但没有 key 的节点的子孙节点，开发环境给出警告
       process.env.NODE_ENV !== 'production' && state.warn(
         `v-once can only be used inside v-for that is keyed. `,
         el.rawAttrsMap['v-once']
       )
+      // 忽略 v-once 指令，再次调用 genElement 生成代码
       return genElement(el, state)
     }
+    // _o 是 markOnce
     return `_o(${genElement(el, state)},${state.onceId++},${key})`
   } else {
+    // 当做静态根节点处理
     return genStatic(el, state)
   }
 }
 
+// 以下为存在 v-if/v-else/v-else-if 指令时，AST 节点独有的属性
+// if, // 带 v-if 指令的元素的独有属性，其值为表达式
+// ifConditions: [ // 带 v-if 指令的元素的独有属性，其中 vIfEl/vElseIfEl/vElseEl 都是对应的元素节点
+//   { exp, block: vIfEl }, // v-if
+//   { exp, block: vElseIfEl }, // （可选）可能存在多个 v-else-if
+//   { exp, block: vElseEl }  // （可选）v-else
+// ],
+// else: true, // （可选）带 v-else 指令的元素的独有属性
+// elseif, // （可选）带 v-else-if 指令的元素的独有属性，其值为表达式
 export function genIf (
   el: any,
   state: CodegenState,
@@ -159,17 +199,22 @@ function genIfConditions (
   altEmpty?: string
 ): string {
   if (!conditions.length) {
+    // _e: createEmptyVNode
     return altEmpty || '_e()'
   }
 
   const condition = conditions.shift()
+  // 判断 condition.exp 是否 falsy，主要是因为 v-else 指令元素的 condition.exp 为 undefined
   if (condition.exp) {
+    // v-if、v-else-if
     return `(${condition.exp})?${
       genTernaryExp(condition.block)
     }:${
+      // 若前一个条件不成立，则使用剩余的条件递归调用 genIfConditions
       genIfConditions(conditions, state, altGen, altEmpty)
     }`
   } else {
+    // v-else
     return `${genTernaryExp(condition.block)}`
   }
 
@@ -189,6 +234,16 @@ export function genFor (
   altGen?: Function,
   altHelper?: string
 ): string {
+  // 以下是存在 v-for 指令时，AST 上独有的属性
+  //   主要用三种形式（in 和 of 都行）：
+  //   1. value in object/array/number
+  //   2. (value, key) in object/array/number
+  //   3. (value, key, index) in object
+  // for,        // 要遍历的数组或对象
+  // alias,      // value
+  // iterator1,  // （可选）key
+  // iterator2,  // （可选）index
+
   const exp = el.for
   const alias = el.alias
   const iterator1 = el.iterator1 ? `,${el.iterator1}` : ''
@@ -200,6 +255,7 @@ export function genFor (
     el.tag !== 'template' &&
     !el.key
   ) {
+    // 针对组件上的 v-for 指令，若不存在 key 则警告
     state.warn(
       `<${el.tag} v-for="${alias} in ${exp}">: component lists rendered with ` +
       `v-for should have explicit keys. ` +
@@ -210,17 +266,25 @@ export function genFor (
   }
 
   el.forProcessed = true // avoid recursion
+  // _l 即 renderList，调用后会返回 VNode 数组
   return `${altHelper || '_l'}((${exp}),` +
     `function(${alias}${iterator1}${iterator2}){` +
       `return ${(altGen || genElement)(el, state)}` +
     '})'
 }
 
+/**
+ * 生成 createElement(name, data, children) 中的 data 数据
+ *
+ * 返回 data 对象
+ */
 export function genData (el: ASTElement, state: CodegenState): string {
   let data = '{'
 
   // directives first.
   // directives may mutate the el's other properties before they are generated.
+
+  // 生成 directives 数据
   const dirs = genDirectives(el, state)
   if (dirs) data += dirs + ','
 
@@ -244,6 +308,7 @@ export function genData (el: ASTElement, state: CodegenState): string {
     data += `tag:"${el.tag}",`
   }
   // module data generation functions
+  // 添加 style/staticStyle、class/staticClass 等
   for (let i = 0; i < state.dataGenFns.length; i++) {
     data += state.dataGenFns[i](el)
   }
@@ -262,11 +327,15 @@ export function genData (el: ASTElement, state: CodegenState): string {
   if (el.nativeEvents) {
     data += `${genHandlers(el.nativeEvents, true)},`
   }
+
+  // el 是插槽内容 template 的 AST 节点
   // slot target
   // only for non-scoped slots
   if (el.slotTarget && !el.slotScope) {
     data += `slot:${el.slotTarget},`
   }
+
+  // el 是子组件标签的 AST 节点
   // scoped slots
   if (el.scopedSlots) {
     data += `${genScopedSlots(el, el.scopedSlots, state)},`
@@ -297,15 +366,25 @@ export function genData (el: ASTElement, state: CodegenState): string {
   }
   // v-bind data wrap
   if (el.wrapData) {
+    // 将 data 封装一层，封装的逻辑里会处理 v-bind 的数据，最终返回 data 对象
+    // (将 v-bind 指令的数据放在 data.domProps 或 data.attrs 或 data 或 data.on（双向绑定） 上)
     data = el.wrapData(data)
   }
   // v-on data wrap
   if (el.wrapListeners) {
+    // 将 data 封装一层，封装的逻辑里会处理 v-on 的数据，最终返回 data 对象
+    // (将 v-on 指令里指令名称和回调放到 data.on 上)
     data = el.wrapListeners(data)
   }
   return data
 }
 
+/**
+ * 生成 data 里 directives 数据
+ * (额外处理 v-on/v-bind/v-cloak 指令，不放置在 data.directives 里)
+ *
+ * el.directive 的数据结构为：[{ name, rawName, value, arg, modifiers }]
+ */
 function genDirectives (el: ASTElement, state: CodegenState): string | void {
   const dirs = el.directives
   if (!dirs) return
@@ -319,6 +398,10 @@ function genDirectives (el: ASTElement, state: CodegenState): string | void {
     if (gen) {
       // compile-time directive that manipulates AST.
       // returns true if it also needs a runtime counterpart.
+
+      // 额外处理 v-on/v-bind/v-cloak 指令，不放置在 data.directives 里
+      // 将 v-on 指令的数据放在 data.on 上
+      // 将 v-bind 指令的数据放在 data.domProps 或 data.attrs 或 data 或 data.on（双向绑定） 上
       needRuntime = !!gen(el, dir, state.warn)
     }
     if (needRuntime) {
@@ -357,11 +440,22 @@ function genInlineTemplate (el: ASTElement, state: CodegenState): ?string {
   }
 }
 
+/**
+ * 生成子组件节点数据对象上的 scopedSlots 属性，这里传入的 el 是指子组件标签 AST 节点
+ */
 function genScopedSlots (
   el: ASTElement,
   slots: { [key: string]: ASTElement },
   state: CodegenState
 ): string {
+  // 常规情况下，当父组件更新时，父组件模板里的跟子组件相关的作用域插槽被认为是稳定的（不需要更新）。
+  // 但是，当这些出现如下情况时，这些作用域插槽却是要强制更新的：
+  // - 子组件标签上存在 v-for 指令
+  // - 与该子组件有关的作用域插槽满足以下条件之一
+  //   - 作用域插槽是动态插槽
+  //   - 作用域插槽存在 v-if 指令
+  //   - 作用域插槽存在 v-for 指令
+  //   - 作用域插槽节点的子孙节点包含了 slot 标签
   // by default scoped slots are considered "stable", this allows child
   // components with only scoped slots to skip forced updates from parent.
   // but in some cases we have to bail-out of this optimization
@@ -404,10 +498,12 @@ function genScopedSlots (
     }
   }
 
+  // 针对每一个作用域插槽生成代码，再拼接成一个字符串
   const generatedSlots = Object.keys(slots)
     .map(key => genScopedSlot(slots[key], state))
     .join(',')
 
+  // 生成子组件标签的 scopedSlots 属性
   return `scopedSlots:_u([${generatedSlots}]${
     needsForceUpdate ? `,null,true` : ``
   }${
@@ -434,20 +530,36 @@ function containsSlotChild (el: ASTNode): boolean {
   return false
 }
 
+/**
+ * 获取作用域插槽的代码，其格式为：
+ * {
+ *   // key: 作用域插槽的 name（或者说是 target）
+ *   // fn: 作用域插槽的 render 函数，运行时调用该函数可以获取到作用域插槽节点的 VNode 节点
+ *   key: fn,
+ *   ...
+ * }
+ * 最终 data.scopedSlots 的数据结构是 { key: fn, ... }
+ * @param {*} el 作用域插槽内容的 template AST 节点
+ * @param {*} state
+ */
 function genScopedSlot (
   el: ASTElement,
   state: CodegenState
 ): string {
   const isLegacySyntax = el.attrsMap['slot-scope']
   if (el.if && !el.ifProcessed && !isLegacySyntax) {
+    // 先处理作用域插槽节点的 v-if 指令，再递归调用 genScopedSlot 处理作用域插槽
     return genIf(el, state, genScopedSlot, `null`)
   }
   if (el.for && !el.forProcessed) {
+    // 先处理作用域插槽节点的 v-for 指令，再递归调用 genScopedSlot 处理作用域插槽
     return genFor(el, state, genScopedSlot)
   }
+  // 获取作用域插槽的 slotProps
   const slotScope = el.slotScope === emptySlotScopeToken
     ? ``
     : String(el.slotScope)
+  // 生成作用域插槽的 render 函数，render 函数里包含了作用域插槽节点集齐子孙节点的代码
   const fn = `function(${slotScope}){` +
     `return ${el.tag === 'template'
       ? el.if && isLegacySyntax
@@ -460,6 +572,9 @@ function genScopedSlot (
   return `{key:${el.slotTarget || `"default"`},fn:${fn}${reverseProxy}}`
 }
 
+/**
+ * 递归地为节点的所有子节点生成代码
+ */
 export function genChildren (
   el: ASTElement,
   state: CodegenState,
@@ -470,6 +585,7 @@ export function genChildren (
   const children = el.children
   if (children.length) {
     const el: any = children[0]
+    // 若父节点只有一个子节点，且该子节点是非 template、非 slot、带有 v-for 的 AST 节点，则进行优化处理
     // optimize single v-for
     if (children.length === 1 &&
       el.for &&
@@ -484,6 +600,8 @@ export function genChildren (
     const normalizationType = checkSkip
       ? getNormalizationType(children, state.maybeComponent)
       : 0
+
+    // 遍历所有子节点，生成子节点的代码
     const gen = altGenNode || genNode
     return `[${children.map(c => gen(c, state)).join(',')}]${
       normalizationType ? `,${normalizationType}` : ''
@@ -543,8 +661,15 @@ export function genComment (comment: ASTText): string {
   return `_e(${JSON.stringify(comment.text)})`
 }
 
+/**
+ * 生成 slot 标签的内容
+ *
+ * 最终拼装成 _t(slotName, children, attrs对象, bind对象)
+ */
 function genSlot (el: ASTElement, state: CodegenState): string {
+  // 注意，这里的 el.slotName 若是动态值，则是个字符串；若是静态值，则会经过 JSON.stringify，类似于 "default"
   const slotName = el.slotName || '"default"'
+  // children 是 slot 标签内的节点，若该 slot 没有分发内容，则显示默认内容即 children
   const children = genChildren(el, state)
   let res = `_t(${slotName}${children ? `,${children}` : ''}`
   const attrs = el.attrs || el.dynamicAttrs
@@ -555,6 +680,8 @@ function genSlot (el: ASTElement, state: CodegenState): string {
         dynamic: attr.dynamic
       })))
     : null
+
+  // 获取 v-bind 指令（没有指令参数）的值
   const bind = el.attrsMap['v-bind']
   if ((attrs || bind) && !children) {
     res += `,null`
@@ -568,6 +695,9 @@ function genSlot (el: ASTElement, state: CodegenState): string {
   return res + ')'
 }
 
+/**
+ * 生成动态组件的 code
+ */
 // componentName is el.component, take it as argument to shun flow's pessimistic refinement
 function genComponent (
   componentName: string,
